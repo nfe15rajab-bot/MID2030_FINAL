@@ -30,7 +30,8 @@ export default function AssemblyAnalysisTab() {
   const [liveLayers, setLiveLayers] = useState([])
   const { currentUser } = useCurrentUser()
 
-  const category = activeSection.charAt(0).toUpperCase() + activeSection.slice(1)
+  const strActiveSection = String(activeSection || '')
+  const category = strActiveSection ? (strActiveSection.charAt(0).toUpperCase() + strActiveSection.slice(1)) : ''
   const categoryMaterials = materials.filter((m) => m.category === category)
   const isUnitSection = UNIT_SECTIONS.has(activeSection)
   const result = analyzeLiveAssembly(activeSection, liveLayers)
@@ -44,8 +45,9 @@ export default function AssemblyAnalysisTab() {
   const { breakdown: gwpPerM2 } = gwpPerM2ForLayers(liveLayers, categoryMaterials)
   const gwpBars = liveLayers.map((l, i) => {
     const perM2 = gwpPerM2.find((g) => g.instanceId === l.instanceId)?.perM2 ?? null
+    const nameStr = l.name || ''
     return {
-      label: l.name.length > 14 ? `${l.name.slice(0, 13)}…` : l.name,
+      label: nameStr.length > 14 ? `${nameStr.slice(0, 13)}…` : nameStr,
       value: perM2,
       formattedValue: perM2 != null ? perM2.toFixed(2) : null,
       tooltipNote: `${l.name} — GWP A1-A3 per 1m² (thickness-scaled)`, // full name, since the bar label itself may be truncated

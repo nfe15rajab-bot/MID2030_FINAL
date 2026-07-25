@@ -42,7 +42,8 @@ export function buildSessionExport() {
 export function exportSessionJson(filename) {
   const data = buildSessionExport()
   const label = data.session.group === 'group2' ? 'group2' : (data.session.groupName || 'other').toLowerCase().replace(/[^a-z0-9]+/g, '-')
-  const name = filename ?? `mid2030-session-${label}-${data.exportedAt.slice(0, 10)}.json`
+  const dateStr = typeof data?.exportedAt === 'string' ? data.exportedAt.slice(0, 10) : new Date().toISOString().slice(0, 10)
+  const name = filename ?? `mid2030-session-${label}-${dateStr}.json`
 
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
   const url = URL.createObjectURL(blob)

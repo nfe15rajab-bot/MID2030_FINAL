@@ -61,7 +61,7 @@ function AppShell() {
   function confirmLeaveSectionConfiguratorIfDirty() {
     if (activeTab !== 'Section Configurator' || !sectionConfiguratorDirty) return true
     return window.confirm(
-      `You have unsaved changes in ${activeSection.charAt(0).toUpperCase() + activeSection.slice(1)}. ` +
+      `You have unsaved changes in ${activeSection && typeof activeSection === 'string' ? (activeSection.charAt(0).toUpperCase() + activeSection.slice(1)) : 'this section'}. ` +
         "Leaving now will discard them (they won't be saved or synced). Leave anyway?"
     )
   }

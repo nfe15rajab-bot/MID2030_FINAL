@@ -49,7 +49,7 @@ function useTeamSummary() {
       const { total: subtotal, known: knownGwpRows } = gwpTotalForLayers(record.layers, allMaterials, geometry?.surfaceAreaM2)
 
       return {
-        section: section.charAt(0).toUpperCase() + section.slice(1),
+        section: typeof section === 'string' && section ? (section.charAt(0).toUpperCase() + section.slice(1)) : '',
         rows,
         subtotal,
         knownGwpCount: knownGwpRows.length,

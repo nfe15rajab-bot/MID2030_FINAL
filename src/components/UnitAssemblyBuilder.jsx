@@ -192,7 +192,8 @@ function MembraneRow({ layer, index, category, owner, onThicknessChange, onField
 }
 
 export default function UnitAssemblyBuilder({ materials, elementType, owner = '', onLayersChange, onDirtyChange }) {
-  const category = elementType.charAt(0).toUpperCase() + elementType.slice(1)
+  const strElementType = String(elementType || '')
+  const category = strElementType ? (strElementType.charAt(0).toUpperCase() + strElementType.slice(1)) : ''
 
   // Nothing saved yet -> seed one unit layer from the first catalog
   // material (Schüco door/window, Fakro skylight) so there's a real

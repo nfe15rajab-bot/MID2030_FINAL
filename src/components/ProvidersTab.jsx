@@ -312,7 +312,7 @@ export default function ProvidersTab() {
 
               {showSectionPreview && selectedSectionRecord && (
                 <SectionPreview
-                  section={previewSection.charAt(0).toUpperCase() + previewSection.slice(1)}
+                  section={typeof previewSection === 'string' && previewSection ? (previewSection.charAt(0).toUpperCase() + previewSection.slice(1)) : ''}
                   owner={selectedSectionRecord.owner}
                   savedAt={selectedSectionRecord.savedAt}
                   layers={selectedSectionRecord.layers}

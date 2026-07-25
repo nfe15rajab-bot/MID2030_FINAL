@@ -11,7 +11,7 @@ import { findProvidersForMaterial } from '../lib/geo.js'
 import { exportMultiPagePdf, exportMultiSectionPdf } from '../lib/multiPagePdfExport.js'
 import { exportA4Docx } from '../lib/a4DocxExport.js'
 import { getSpreadsheetRows, getSpreadsheetMeta } from '../lib/spreadsheetData.js'
-import { exportSpreadsheetExcel } from '../lib/spreadsheetExcelExport.js'
+import { exportSpreadsheetExcel, exportReferenceMatchingExcel } from '../lib/spreadsheetExcelExport.js'
 import { embedSectionDataInPdf } from '../lib/pdfSessionAttachment.js'
 import providers from '../../database/providers.json'
 import referenceLocations from '../../database/reference-locations.json'
@@ -22,6 +22,7 @@ import GlobalProviderMap from './GlobalProviderMap.jsx'
 import SectionPreview from './SectionPreview.jsx'
 import FicheTechniquePanel from './FicheTechniquePanel.jsx'
 import RevitExportPanel from './RevitExportPanel.jsx'
+import HinalMaterialAuditReport from './HinalMaterialAuditReport.jsx'
 import html2canvas from 'html2canvas'
 import { jsPDF } from 'jspdf'
 import './DeliverablesTab.css'
@@ -473,7 +474,7 @@ function AssumptionsSection() {
   )
 }
 
-const SUB_TABS = ['Report', 'Assumptions', 'Excel & EPD', 'Sections', 'Fiche sheets']
+const SUB_TABS = ['Report', 'Material Audit', 'Assumptions', 'Excel & EPD', 'Sections', 'Fiche sheets']
 
 // Deliverables — the final tab. One place to generate every output the
 // assignment requires, each reusing an existing pipeline rather than a
@@ -495,6 +496,12 @@ export default function DeliverablesTab() {
     const rows = getSpreadsheetRows()
     const meta = getSpreadsheetMeta()
     await exportSpreadsheetExcel(rows, meta)
+  }
+
+  async function handleReferenceExcelExport() {
+    const rows = getSpreadsheetRows()
+    const meta = getSpreadsheetMeta()
+    await exportReferenceMatchingExcel(rows, meta)
   }
 
   return (
@@ -521,6 +528,8 @@ export default function DeliverablesTab() {
 
       {subTab === 'Report' && <A4ReportSection />}
 
+      {subTab === 'Material Audit' && <HinalMaterialAuditReport />}
+
       {subTab === 'Assumptions' && <AssumptionsSection />}
 
       {subTab === 'Excel & EPD' && (
@@ -533,12 +542,12 @@ export default function DeliverablesTab() {
               <button type="button" onClick={handleExcelExport} disabled={!hasAnyData}>
                 Export Excel
               </button>
+              <button type="button" onClick={handleReferenceExcelExport} disabled={!hasAnyData} style={{ backgroundColor: '#2d6a4f' }}>
+                Export Excel Matching Reference
+              </button>
             </div>
             <p className="deliverable-note">
-              Matches the class template's own group2_v2 column layout exactly (Architectural Elements
-              Description → GWP → Transport → Replacement → C1-C4/D → Operation Energy), auto-filled
-              live from saved layers, providers, and fiche research. See also the Spreadsheet tab, which
-              shows this same table on-screen before you export it.
+              "Export Excel Matching Reference" matches Professor Thomaz's reference workbook layout with individual assembly worksheets (Assembly_1 Wall, Assembly_2 Floor, Assembly_3 Roof, Assembly_4 Door, Assembly_5 Window, Assembly_6 Skylight) linked to a master ANALYSIS summary tab via live Excel formulas.
             </p>
           </div>
 

@@ -294,7 +294,8 @@ function SortableLayerRow({
 }
 
 export default function LayerBuilder({ materials, elementType = 'wall', owner = '', onLayersChange, onPitchChange, onDirtyChange }) {
-  const category = elementType.charAt(0).toUpperCase() + elementType.slice(1)
+  const safeElementType = typeof elementType === 'string' && elementType ? elementType : 'wall'
+  const category = safeElementType.charAt(0).toUpperCase() + safeElementType.slice(1)
   // Nothing saved yet for this section -> show the real group2_v2-derived
   // defaults (database/defaultLayers.json, seeded from the midterm deck's
   // actual material choices) instead of an empty stack, so a fresh team
@@ -486,7 +487,7 @@ export default function LayerBuilder({ materials, elementType = 'wall', owner = 
     setScaleExportError(null)
     try {
       await exportTrueScaleSection({
-        section: elementType.charAt(0).toUpperCase() + elementType.slice(1),
+        section: safeElementType.charAt(0).toUpperCase() + safeElementType.slice(1),
         owner: lastSaved?.owner ?? owner ?? '',
         savedAt: lastSaved?.savedAt ?? null,
         layers,
@@ -889,7 +890,7 @@ export default function LayerBuilder({ materials, elementType = 'wall', owner = 
       )}
       <SectionPreview
         ref={previewRef}
-        section={elementType.charAt(0).toUpperCase() + elementType.slice(1)}
+        section={safeElementType.charAt(0).toUpperCase() + safeElementType.slice(1)}
         owner={lastSaved?.owner ?? owner}
         savedAt={lastSaved?.savedAt}
         layers={layers}

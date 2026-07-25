@@ -193,7 +193,7 @@ function parseProcess(json) {
  */
 export async function searchMaterials(query, opts = {}) {
   const hits = await searchProcesses(query, opts);
-  const toFetch = hits.slice(0, MAX_DETAIL_FETCHES);
+  const toFetch = (hits || []).slice(0, MAX_DETAIL_FETCHES);
 
   const detailed = await Promise.all(
     toFetch.map(async (hit) => {

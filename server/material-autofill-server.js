@@ -169,8 +169,9 @@ ${fields.map((f) => {
 }
 
 function extractJson(text) {
+  if (!text || typeof text !== 'string') throw new Error('No text provided for JSON extraction')
   const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/)
-  const candidate = fenced ? fenced[1] : text
+  const candidate = fenced && fenced[1] ? fenced[1] : text
   const start = candidate.indexOf('{')
   const end = candidate.lastIndexOf('}')
   if (start === -1 || end === -1) throw new Error('No JSON object found in model response')

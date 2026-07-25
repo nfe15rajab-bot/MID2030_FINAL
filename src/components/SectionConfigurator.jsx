@@ -22,7 +22,8 @@ const UNIT_SECTIONS = new Set(['door', 'window', 'skylight'])
 // a real preview of what "Save changes" would persist, updating on every
 // edit rather than only after a save.
 function LiveSectionPreview({ section, layers, pitchDeg, owner }) {
-  const category = section.charAt(0).toUpperCase() + section.slice(1)
+  const strSection = String(section || '')
+  const category = strSection ? (strSection.charAt(0).toUpperCase() + strSection.slice(1)) : ''
   const { uValue, rTotal, missingData } = calculateUValue(layers, section)
   // Real area-scaled total (see gwpPerM2.js) — not a naive sum of raw
   // per-declared-unit values. This is the live preview shown while
@@ -95,7 +96,8 @@ function LiveUnitPreview({ layers }) {
 // for wall/roof/floor, a short product/membrane list for door/window/
 // skylight), right is the editor itself.
 export default function SectionConfigurator({ activeSection, onSectionChange, owner, onDirtyChange }) {
-  const category = activeSection.charAt(0).toUpperCase() + activeSection.slice(1)
+  const strActiveSection = String(activeSection || '')
+  const category = strActiveSection ? (strActiveSection.charAt(0).toUpperCase() + strActiveSection.slice(1)) : ''
   const categoryMaterials = materials.filter((m) => m.category === category)
   const isUnitSection = UNIT_SECTIONS.has(activeSection)
   const [liveLayers, setLiveLayers] = useState([])

@@ -1,6 +1,6 @@
 import React from 'react'
 import { getSpreadsheetRows, getSpreadsheetMeta } from '../lib/spreadsheetData.js'
-import { exportSpreadsheetExcel } from '../lib/spreadsheetExcelExport.js'
+import { exportSpreadsheetExcel, exportReferenceMatchingExcel } from '../lib/spreadsheetExcelExport.js'
 import './SpreadsheetTab.css'
 
 function fmt(n, digits = 1) {
@@ -11,14 +11,8 @@ function fmt(n, digits = 1) {
 // Description" + LCA-phase spreadsheet layout (group2_v2-style) — same
 // column grouping and header bands, but every cell is pulled from
 // whatever's actually saved in this app (sectionStorage, fiche research,
-// Operational Energy settings) rather than typed in here. Export button
-// produces a real .xlsx in the identical layout — see
-// spreadsheetExcelExport.js — which is now the ONE Excel export this app
-// offers (replaces the old standalone-summary-workbook export).
-//
-// 30 data columns total, grouped into 6 header bands — counts below MUST
-// stay in sync with the colSpan values on the band row:
-//   description(12) + gwp(3) + transport(2) + replacement(3) + eol(5) + energy(5) = 30
+// Operational Energy settings) rather than typed in here. Export buttons
+// produce real .xlsx workbooks (flat list or separate assembly worksheets).
 export default function SpreadsheetTab() {
   const rows = getSpreadsheetRows()
   const meta = getSpreadsheetMeta()
@@ -33,6 +27,10 @@ export default function SpreadsheetTab() {
     await exportSpreadsheetExcel(rows, meta)
   }
 
+  async function handleReferenceExport() {
+    await exportReferenceMatchingExcel(rows, meta)
+  }
+
   return (
     <div className="spreadsheet-tab">
       <h2 className="spreadsheet-heading">Spreadsheet (group2_v2 layout)</h2>
@@ -41,9 +39,15 @@ export default function SpreadsheetTab() {
         and fiche research; nothing typed in here. Export produces the identical layout as a real .xlsx.
       </p>
 
-      <button type="button" className="spreadsheet-export-button" onClick={handleExport} disabled={rows.length === 0}>
-        Export .xlsx
-      </button>
+      <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+        <button type="button" className="spreadsheet-export-button" onClick={handleExport} disabled={rows.length === 0}>
+          Export .xlsx (Integrated)
+        </button>
+        <button type="button" className="spreadsheet-export-button" style={{ backgroundColor: '#2d6a4f' }} onClick={handleReferenceExport} disabled={rows.length === 0}>
+          Export Excel Matching Reference
+        </button>
+      </div>
+
 
       {rows.length === 0 ? (
         <p className="empty-state">

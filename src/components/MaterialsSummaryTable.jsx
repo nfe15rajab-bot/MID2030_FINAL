@@ -4,6 +4,7 @@ import {
   parseMaterialsSummaryExcelFile,
   applyMaterialsSummaryImport,
 } from '../lib/materialsSummaryExcel.js'
+import { exportHinalMaterialAuditExcel } from '../lib/hinalMaterialAudit.js'
 
 // Live, discipline-grouped, deduplicated materials table for the Materials
 // and Providers tab, plus its Excel export/import controls. `rows` and
@@ -23,6 +24,15 @@ export default function MaterialsSummaryTable({ groupedRows, rows, materialById,
     setBusy(true)
     try {
       await exportMaterialsSummaryExcel(rows, materialById)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function handleHinalAuditExcel() {
+    setBusy(true)
+    try {
+      await exportHinalMaterialAuditExcel()
     } finally {
       setBusy(false)
     }
@@ -76,6 +86,9 @@ export default function MaterialsSummaryTable({ groupedRows, rows, materialById,
           </button>
           <button type="button" onClick={handleExport} disabled={busy || rows.length === 0}>
             {busy ? 'Working…' : 'Export to Excel'}
+          </button>
+          <button type="button" onClick={handleHinalAuditExcel} disabled={busy || rows.length === 0} style={{ background: '#059669', color: '#ffffff', fontWeight: 600 }}>
+            📊 Hinal Audit Sheet
           </button>
           <button type="button" onClick={handleImportClick} disabled={busy}>
             Import Excel

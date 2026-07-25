@@ -1,0 +1,112 @@
+/* Import this once, e.g. in the file where you use <MaterialSearchPanel />.
+   Plain CSS on purpose — no assumption about Tailwind/CSS-modules in your project. */
+
+.mid2030-material-search {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  font-family: inherit;
+  max-width: 520px;
+}
+
+.mms-tabs {
+  display: flex;
+  gap: 0.25rem;
+  flex-wrap: wrap;
+  border-bottom: 1px solid #ddd;
+  padding-bottom: 0.25rem;
+}
+
+.mms-tab {
+  border: none;
+  background: transparent;
+  padding: 0.4rem 0.7rem;
+  border-radius: 6px 6px 0 0;
+  cursor: pointer;
+  font-size: 0.85rem;
+  color: #555;
+}
+
+.mms-tab--active {
+  background: var(--accent);
+  color: #fff;
+  font-weight: 600;
+}
+
+.mms-search-input {
+  padding: 0.5rem 0.7rem;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 0.9rem;
+}
+
+.mms-results,
+.mms-browse {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  max-height: 360px;
+  overflow-y: auto;
+}
+
+.mms-result-card {
+  text-align: left;
+  border: 1px solid #e2e2e2;
+  border-radius: 8px;
+  padding: 0.6rem 0.75rem;
+  background: #fff;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+
+.mms-result-card:hover {
+  border-color: var(--accent);
+}
+
+.mms-result-name {
+  font-weight: 600;
+  font-size: 0.88rem;
+  color: #222;
+}
+
+.mms-result-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.78rem;
+  color: #666;
+  margin-top: 0.2rem;
+  flex-wrap: wrap;
+}
+
+.mms-badge {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.mms-badge--none {
+  color: var(--status-attention);
+  font-weight: 400;
+  font-style: italic;
+}
+
+.mms-result-note {
+  margin-top: 0.3rem;
+  font-size: 0.75rem;
+  color: var(--status-attention);
+}
+
+.mms-status {
+  font-size: 0.82rem;
+  color: #555;
+  padding: 0.4rem 0;
+}
+
+.mms-status--error {
+  color: var(--status-error);
+}
+
+.mms-status--muted {
+  color: #888;
+  font-style: italic;
+}

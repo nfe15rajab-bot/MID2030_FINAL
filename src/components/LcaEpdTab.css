@@ -1,0 +1,149 @@
+.lca-epd-tab { display: flex; flex-direction: column; gap: 20px; }
+/* Distinguishing accent vs. Assembly Analysis Preview's similar-looking
+   2x2 grid layout — plum here, teal there (see .assembly-analysis-heading). */
+.lca-epd-heading {
+  margin: 0;
+  padding-left: 10px;
+  border-left: 4px solid #8a4a6b;
+  font-size: 1.05rem;
+  color: #8a4a6b;
+}
+.lca-epd-intro { color: #666; font-size: 0.88rem; margin: 0; }
+
+.lca-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 12px;
+}
+.lca-card {
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.lca-card h3 { margin: 0 0 6px; font-size: 1rem; }
+.lca-card--out-of-scope { background: #f5f4f0; opacity: 0.8; }
+.lca-note { color: #888; font-size: 0.82rem; font-style: italic; margin: 0; }
+
+.lca-geometry-row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+.lca-geometry-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.8rem;
+  color: #555;
+  flex: 1;
+  /* Flex items default to min-width:auto (refuse to shrink below their
+     content's intrinsic width) — a plain <input> wants ~170-200px by
+     browser default, wider than this field's own flex-shrunk share of a
+     narrow LCA card, so without this it overflowed straight through the
+     card's right edge into the next one. Verified directly (screenshot),
+     not a guess. */
+  min-width: 0;
+}
+.lca-geometry-field input {
+  width: 100%;
+  padding: 5px 7px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: 0.85rem;
+}
+
+.lca-phase-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 0.85rem;
+}
+.lca-phase-label { color: #666; width: 130px; flex-shrink: 0; }
+.lca-phase-value { font-weight: 700; color: #222; }
+.lca-phase-value--muted { font-weight: 400; color: #999; font-style: italic; }
+.lca-phase-sub { color: #999; font-size: 0.76rem; }
+.lca-phase-row--total {
+  margin-top: 4px;
+  padding-top: 6px;
+  border-top: 1px solid var(--border);
+}
+.lca-phase-row--total .lca-phase-value { color: var(--accent); font-size: 0.95rem; }
+
+.lca-missing {
+  margin-top: 8px;
+  padding: 8px 10px;
+  background: var(--status-attention-bg);
+  border: 1px solid var(--status-attention);
+  border-radius: 6px;
+}
+.lca-missing-label {
+  color: var(--status-attention);
+  font-weight: 600;
+  font-size: 0.78rem;
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: inherit;
+}
+.lca-missing-label:hover { text-decoration: underline; }
+.lca-missing-caret { font-size: 0.68rem; transition: transform 0.15s ease; }
+.lca-missing-caret--open { transform: rotate(180deg); }
+.lca-missing ul { margin: 6px 0 0; padding-left: 18px; }
+.lca-missing li { color: var(--status-attention); font-size: 0.78rem; margin-bottom: 2px; }
+
+.lca-card-meta { color: #999; font-size: 0.75rem; margin: 8px 0 0; }
+
+.lca-completeness {
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px 16px;
+}
+.lca-completeness h3 { margin: 0 0 4px; font-size: 1rem; }
+.lca-completeness-row {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+.lca-completeness-header { display: flex; align-items: center; gap: 8px; font-size: 0.88rem; }
+.lca-completeness-badge {
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 1px 8px;
+  border-radius: 10px;
+}
+.lca-completeness-badge--complete { background: var(--status-complete-bg); color: var(--status-complete); }
+.lca-completeness-badge--incomplete { background: var(--status-attention-bg); color: var(--status-attention); }
+.lca-completeness-badge--out-of-scope,
+.lca-completeness-badge--no-data { background: #eee; color: #888; }
+.lca-completeness-row ul { margin: 6px 0 0; padding-left: 18px; }
+.lca-completeness-row li { color: var(--status-attention); font-size: 0.78rem; margin-bottom: 2px; }
+
+.lca-epd-list {
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px 16px;
+}
+.lca-epd-list h3 { margin: 0 0 4px; font-size: 1rem; }
+.lca-epd-sheet { margin: 10px 0; overflow-x: auto; }
+.lca-epd-sheet table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+.lca-epd-sheet th, .lca-epd-sheet td {
+  border: 1px solid var(--border);
+  padding: 6px 10px;
+  text-align: left;
+}
+.lca-epd-sheet thead th { background: #f0efe9; font-weight: 600; }

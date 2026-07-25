@@ -1,0 +1,166 @@
+.revit-export-card {
+  margin-top: 2rem;
+  background: var(--bg-card, #ffffff);
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+}
+
+.revit-export-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.25rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 2px solid var(--border-color, #f1f5f9);
+}
+
+.revit-export-title-group {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.revit-export-title-group h3 {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--text-heading, #0f172a);
+}
+
+.revit-badge {
+  background: #0284c7;
+  color: #ffffff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.25rem 0.6rem;
+  border-radius: 9999px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.revit-export-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.revit-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1.1rem;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+}
+
+.revit-btn--primary {
+  background: #0f172a;
+  color: #ffffff;
+}
+
+.revit-btn--primary:hover {
+  background: #1e293b;
+  transform: translateY(-1px);
+}
+
+.revit-btn--secondary {
+  background: #f1f5f9;
+  color: #0f172a;
+  border-color: #cbd5e1;
+}
+
+.revit-btn--secondary:hover {
+  background: #e2e8f0;
+}
+
+.revit-btn--accent {
+  background: #0284c7;
+  color: #ffffff;
+}
+
+.revit-btn--accent:hover {
+  background: #0369a1;
+}
+
+.revit-assemblies-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.revit-assembly-card {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 0.85rem;
+}
+
+.revit-assembly-title {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 0.4rem;
+  display: flex;
+  justify-content: space-between;
+}
+
+.revit-assembly-owner {
+  font-size: 0.75rem;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.revit-assembly-stat {
+  font-size: 0.8rem;
+  color: #475569;
+  display: flex;
+  justify-content: space-between;
+  margin-top: 0.25rem;
+}
+
+.revit-script-modal {
+  margin-top: 1.25rem;
+  background: #0f172a;
+  color: #f8fafc;
+  border-radius: 8px;
+  padding: 1rem;
+  font-family: monospace;
+  font-size: 0.8rem;
+  overflow-x: auto;
+}
+
+.revit-script-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+  border-bottom: 1px solid #334155;
+  padding-bottom: 0.5rem;
+}
+
+.revit-script-header span {
+  font-weight: bold;
+  color: #38bdf8;
+}
+
+.revit-script-header button {
+  background: #334155;
+  color: #ffffff;
+  border: none;
+  border-radius: 4px;
+  padding: 0.25rem 0.6rem;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.revit-script-header button:hover {
+  background: #475569;
+}

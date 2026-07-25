@@ -1,0 +1,54 @@
+.spreadsheet-tab { display: flex; flex-direction: column; gap: 14px; }
+.spreadsheet-heading {
+  margin: 0;
+  padding-left: 10px;
+  border-left: 4px solid #6b4a8a;
+  font-size: 1.05rem;
+  color: #6b4a8a;
+}
+.spreadsheet-intro { color: #666; font-size: 0.88rem; margin: 0; }
+
+.spreadsheet-export-button {
+  align-self: flex-start;
+  padding: 8px 16px;
+  border: none;
+  background: var(--accent);
+  color: white;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+.spreadsheet-export-button:disabled { background: #aaa; cursor: not-allowed; }
+
+/* This table is genuinely wide (30 data columns, matching the class
+   template 1:1) — a horizontal-scroll container is the honest way to
+   show it rather than shrinking text past readability. */
+.spreadsheet-scroll { overflow-x: auto; }
+
+.spreadsheet-table {
+  border-collapse: collapse;
+  font-size: 0.76rem;
+  white-space: nowrap;
+}
+.spreadsheet-table th, .spreadsheet-table td {
+  border: 1px solid #ccc;
+  padding: 4px 7px;
+  text-align: left;
+}
+.spreadsheet-table thead tr:first-child th { text-align: center; font-weight: 700; }
+.spreadsheet-cell--wide { white-space: normal; min-width: 140px; }
+
+/* Same pastel header-band convention as the class template — gray for
+   the physical description columns, then one tint per LCA phase group. */
+.band--description { background: #e4e4e0; }
+.band--gwp { background: #d9ecdf; }
+.band--transport { background: #dbe8f3; }
+.band--replacement { background: #ecdcf0; }
+.band--eol { background: #f3e6d9; }
+.band--energy { background: #f7f0c9; }
+
+.spreadsheet-table tfoot td { background: #f7f6f2; font-weight: 600; }
+.spreadsheet-total-weight { text-align: right; font-weight: 700; }
+
+.spreadsheet-subheading { font-size: 0.92rem; margin: 4px 0 0; }
+.spreadsheet-table--assumptions { margin-top: 4px; }

@@ -1,0 +1,171 @@
+/* "Typical section" technical sheet — bordered drawing-sheet look, loosely
+   modeled on a class-style section drawing (title block, section diagram,
+   data table). Plain CSS, no external assets, so html2canvas can capture it
+   1:1 for PDF export. */
+
+.section-sheet {
+  background: #fff;
+  border: 3px solid #222;
+  padding: 16px;
+  max-width: 640px;
+  font-family: inherit;
+}
+
+.section-sheet-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  border-bottom: 1px solid #222;
+  padding-bottom: 8px;
+  margin-bottom: 12px;
+}
+.section-sheet-project { font-weight: 700; font-size: 0.95rem; }
+.section-sheet-subtitle { font-size: 0.78rem; color: #666; }
+.section-sheet-heading {
+  font-weight: 700;
+  font-size: 0.95rem;
+  letter-spacing: 0.03em;
+  text-align: right;
+}
+
+.section-sheet-diagram {
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 10px;
+  margin-bottom: 12px;
+  min-height: 90px;
+  display: flex;
+  align-items: center;
+  overflow: visible;
+}
+/* Floor/Roof stand the stack on end (and Roof also rotates it to a pitch
+   angle) — both need real headroom, unlike Wall's flat 90px strip. Tall
+   enough for the pitch-stage below (200px) plus both edge labels. */
+.section-sheet-diagram--column { min-height: 260px; }
+
+/* Fixed square "stage" the column bars-stack centers itself in — sized to
+   the stack's own diagonal (90x150 -> ~175px) plus a margin, so a rotated
+   (roof pitch) stack can never clip against the diagram border or drift
+   toward one corner at any angle 0-90°, regardless of how the unrotated
+   rectangle would otherwise sit. Floor's stack sits in the same stage
+   unrotated — harmless, just a bit of extra breathing room. */
+.section-sheet-pitch-stage {
+  width: 200px;
+  height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* Wraps the diagram with its two edge labels (Interior/Exterior,
+   Interior/Ground, or Sky/Interior) — same row-vs-column axis as the bars
+   themselves so a label always sits at the physically correct edge. */
+.section-sheet-orientation {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+}
+.section-sheet-orientation--row { flex-direction: row; }
+.section-sheet-orientation--column { flex-direction: column; height: 100%; }
+
+.section-sheet-edge-label {
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #777;
+  white-space: nowrap;
+}
+
+.section-sheet-bars {
+  display: flex;
+  border: 1px solid #222;
+}
+.section-sheet-bars--row { flex-direction: row; width: 100%; height: 70px; }
+.section-sheet-bars--column {
+  flex-direction: column;
+  width: 90px;
+  height: 150px;
+  /* Rotation (roof pitch) pivots around the stack's own center, not the
+     page — the edge labels above/below stay level, only the layer-stack
+     rectangle tilts, same convention as a pitched-roof detail drawing. */
+  transform-origin: center center;
+}
+.section-sheet-bar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  color: #222;
+  font-size: 0.62rem;
+  text-align: center;
+  padding: 2px;
+}
+.section-sheet-bars--row .section-sheet-bar { border-right: 1px solid #222; }
+.section-sheet-bars--row .section-sheet-bar:last-child { border-right: none; }
+.section-sheet-bars--column .section-sheet-bar { border-bottom: 1px solid #222; }
+.section-sheet-bars--column .section-sheet-bar:last-child { border-bottom: none; }
+
+/* Same three status tokens as the layer list's own completeness signal
+   (green row background, amber "missing" fields) — see
+   layerCompleteness.js: complete = GWP+density+λ all known, none = none
+   of the three known, partial = anything in between. */
+.section-sheet-bar--complete { background: var(--status-complete-bg); }
+.section-sheet-bar--partial { background: var(--status-attention-bg); }
+.section-sheet-bar--none { background: var(--status-error-bg); }
+
+.section-sheet-bar-thickness { font-weight: 700; }
+.section-sheet-bar-name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.section-sheet-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.78rem;
+  margin-bottom: 12px;
+}
+.section-sheet-table th,
+.section-sheet-table td {
+  border: 1px solid var(--border);
+  padding: 4px 6px;
+  text-align: left;
+}
+.section-sheet-table th { background: #f2f1ec; }
+
+.section-sheet-summary {
+  display: flex;
+  gap: 18px;
+  flex-wrap: wrap;
+  font-size: 0.85rem;
+  font-weight: 600;
+  border-top: 1px solid #222;
+  padding-top: 8px;
+  margin-bottom: 12px;
+}
+
+.section-sheet-titleblock {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  border: 1px solid #222;
+  font-size: 0.75rem;
+}
+.section-sheet-titleblock > div {
+  border-right: 1px solid #222;
+  padding: 6px 8px;
+}
+.section-sheet-titleblock > div:last-child { border-right: none; }
+.tb-label {
+  display: block;
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  color: #888;
+  letter-spacing: 0.03em;
+}

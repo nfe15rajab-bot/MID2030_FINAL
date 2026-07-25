@@ -1,0 +1,84 @@
+.assembly-analysis-tab {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+/* Distinguishing accent for this tab vs. LCA and EPD's similar-looking
+   2x2 grid layout — teal here, plum there (see .lca-epd-heading) — kept
+   to a heading accent only, not a full re-theme. */
+.assembly-analysis-heading {
+  margin: 0;
+  padding-left: 10px;
+  border-left: 4px solid #1f7a6c;
+  font-size: 1.05rem;
+  color: #1f7a6c;
+}
+.assembly-analysis-intro { color: #666; font-size: 0.88rem; margin: 0; }
+
+.assembly-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+.assembly-card {
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px 16px;
+}
+.assembly-card h3 { margin: 0 0 8px; font-size: 1rem; }
+.assembly-card--out-of-scope { background: #f5f4f0; opacity: 0.8; }
+.assembly-card-note { color: #888; font-size: 0.82rem; font-style: italic; margin: 0; }
+.assembly-card-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+  font-size: 0.85rem;
+}
+.assembly-card-label { color: #666; width: 90px; flex-shrink: 0; }
+.assembly-card-value { font-weight: 700; color: #222; }
+.assembly-card-sub { color: #999; font-size: 0.78rem; }
+.assembly-card-incomplete { color: var(--status-attention); font-size: 0.8rem; }
+.assembly-card-completeness { font-weight: 600; color: var(--status-attention); }
+.assembly-card-completeness--full { color: var(--status-complete); }
+.assembly-card-meta { color: #999; font-size: 0.75rem; margin: 8px 0 0; }
+
+.assembly-charts {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.bar-chart {
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px 16px;
+  position: relative;
+}
+.bar-chart-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.bar-chart-title { margin: 0; font-size: 0.88rem; color: #444; }
+.bar-chart-export-button {
+  flex-shrink: 0;
+  font-size: 0.78rem;
+  padding: 3px 10px;
+}
+.bar-chart-tooltip {
+  position: absolute;
+  bottom: 10px;
+  right: 12px;
+  background: #222;
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  pointer-events: none;
+}

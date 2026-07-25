@@ -1,0 +1,4 @@
+ezdxf>=1.4
+Pillow
+svglib
+reportlab

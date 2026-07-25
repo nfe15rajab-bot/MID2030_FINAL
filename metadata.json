@@ -1,0 +1,6 @@
+{
+  "name": "MID 2030 – Model 1 Assembly Builder",
+  "description": "Web tool supporting the MID 2030 final project: LCA of a timber cabin at Batavierenplantsoen, Haarlem (Model 1, Group 02).",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

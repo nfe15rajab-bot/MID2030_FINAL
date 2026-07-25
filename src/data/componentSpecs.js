@@ -1,0 +1,80 @@
+// These three aren't "layer stacks" like wall/roof/floor — they're single
+// manufactured units. So instead of the layer builder, their hotspot opens
+// a simple read-only spec card. Placeholder data straight from the
+// mid-term deck; swap in real Ökobaudat/EPD figures once available.
+export const componentSpecs = {
+  skylight: {
+    name: 'Fakro FX G31 Replacement Line',
+    provider: 'Fakro',
+    location: 'Nowy Sącz, Poland',
+    dimensions: '69 × 62 mm (chosen dimensions per deck — verify, unusually small for a skylight, likely a units note from the original doc)',
+    keyCharacteristics: [
+      'Suitable for sloped roof',
+      'Tempered overlaminate low-E glazing',
+      'Constructed from treated wood to resist moisture',
+      'Natural wood finish, two layers of clear acrylic lacquer',
+      'Improved condensation management gasket system',
+      'Special perimeter gasket under the frame for improved insulation',
+    ],
+    performance: {
+      windowUValue: '0.23 W/m²K',
+      glazingUValue: '0.19 W/m²K',
+      glazingUnit: '4HT-Tg14Ar-33.2',
+      visibleTransmittance: '0.36',
+      unitsInScope: '2 units (Owner: Nada)',
+    },
+    note: 'Not currently counted toward the A1-A3/A4 GWP totals per team decision to disregard the skylight — this card is reference-only.',
+  },
+  door: {
+    name: 'Schüco ASS 77 PD.HI — Sliding Door System',
+    provider: 'Schüco International KG',
+    location: 'Schücostraße 1, 33609 Bielefeld, Germany',
+    dimensions: 'W × H: 1200–3200 mm × 1000–3500 mm, up to 500 kg per sash',
+    keyCharacteristics: [
+      'Concealed outer & vent frames with ultra-slim 37 mm interlocking mullion',
+      'High thermal insulation: Uw ≥ 1.0 W/m²K with triple glazing (vetroSol 4/16/4/16/4 mm, Ug=0.6 W/m²K)',
+      'Integrated threshold detail with perimeter waterproofing (EPDM, wooden fixation plates, XPS perimeter insulation)',
+      'Exterior bended aluminium drip flashing sheet & water dripping profiles',
+      'Barrier-free threshold compliance (<12.5 mm flush floor integration)',
+      'Motorised TipTronic electric drive (230V / 50Hz) and concealed locking mechanism',
+      'Acoustic insulation up to 42 dB(A) and burglar resistance class RC2',
+      'Cradle to Cradle (C2C) Certified Silver & CE marked (DIN EN 14351-1)',
+    ],
+    performance: {
+      systemUValue: 'Uw ≥ 1.0 W/m²K',
+      glazingUValue: 'Ug = 0.6 W/m²K (4/16/4/16/4 mm vetroSol Flachglas)',
+      gwpA1A3Unit: '285.0 kg CO₂e / unit (Schüco ASS 77 PD.HI EPD)',
+      epdReference: 'EPD-SCH-20210178-IBD1-EN',
+      soundReduction: 'up to 42 dB(A)',
+      burglarResistance: 'up to RC2',
+      unitsInScope: '2 units (Owner: Michael)',
+    },
+  },
+  window: {
+    name: 'Schüco AWS 75 BS.HI+ — Window System',
+    provider: 'Schüco International KG',
+    location: 'Schücostraße 1, 33609 Bielefeld, Germany',
+    dimensions: 'W × H: 470–1500 mm × 540–2200 mm, max vent weight 160 kg (2 units in scope)',
+    keyCharacteristics: [
+      'Concealed vent — vent frame hidden behind outer frame rebate; 0 mm visible face width from exterior',
+      '75 mm basic depth outer frame / mullion / transom; 80 mm vent frame; 85 mm total system depth',
+      'High thermal insulation: Ug ≤ 0.5 W/m²K (triple glazing) and Uf ≥ 1.6 W/m²K',
+      'Integrated sloped powder-coated aluminium plate profile for water drainage & drip edge',
+      'Wood fiber board (036) under sill for thermal insulation with EPDM perimeter water insulation',
+      'Interior Kronoply OSB 18mm thick reveal panels and aluminium fixation angle',
+      'TipTronic motorised electric drive fully integrated & barrier-free per DIN 18040',
+      'Acoustic insulation up to 49 dB(A) and burglar resistance class RC3',
+      'Cradle to Cradle (C2C) Certified Silver & CE marked (DIN EN 14351-1)',
+    ],
+    performance: {
+      systemUValue: 'Uw ≈ 0.8–1.0 W/m²K (EN ISO 10077)',
+      frameUValue: 'Uf ≥ 1.6 W/m²K',
+      glazingUValue: 'Ug ≤ 0.5 W/m²K (triple glazing)',
+      gwpA1A3Unit: '165.0 kg CO₂e / unit (Schüco AWS 75 EPD)',
+      epdReference: 'EPD-SCH-20210178-IBD1-EN',
+      soundReduction: 'up to 49 dB(A)',
+      burglarResistance: 'up to RC3',
+      unitsInScope: '2 units (Owner: Michael)',
+    },
+  },
+}

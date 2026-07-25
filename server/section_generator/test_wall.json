@@ -1,0 +1,14 @@
+{
+  "section": "Wall",
+  "owner": "Sukriti",
+  "savedAt": "2026-07-11T07:31:13.433Z",
+  "layers": [
+    {
+      "materialId": "wall-steico-universal-black",
+      "name": "STEICO Universal Black — Fibre Wall Board",
+      "thicknessMM": 35,
+      "thermalConductivityWmK": 0.05,
+      "gwpA1A3PerFunctionalUnit": 420
+    }
+  ]
+}

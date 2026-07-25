@@ -1,0 +1,39 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "dist"
+      }
+    },
+    {
+      "src": "server/*.js",
+      "use": "@vercel/node"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/okobaudat-api/(.*)",
+      "dest": "https://oekobaudat.de/OEKOBAU.DAT/$1"
+    },
+    {
+      "src": "/api/section-export/(.*)",
+      "dest": "/server/section-export-server.js"
+    },
+    {
+      "src": "/api/material-autofill/(.*)",
+      "dest": "/server/material-autofill-server.js"
+    },
+    {
+      "src": "/api/routing/(.*)",
+      "dest": "/server/routing-server.js"
+    },
+    { "handle": "filesystem" },
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
+    }
+  ]
+}

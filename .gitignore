@@ -1,0 +1,13 @@
+node_modules/
+output/*
+!output/.gitkeep
+dist/
+.DS_Store
+server/.env
+*.log
+release/
+release-build/
+release-pkg/
+
+.vercel
+.env*

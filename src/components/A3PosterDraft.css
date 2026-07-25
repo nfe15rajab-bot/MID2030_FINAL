@@ -1,0 +1,79 @@
+/* Stacks the two physical sheets for on-screen preview (scrollable) — the
+   export function captures each .a3-poster inside here as its own PDF
+   page via its own ref, this wrapper itself is never captured. */
+.a3-poster-pages { display: flex; flex-direction: column; gap: 28px; }
+
+.a3-poster {
+  background: white;
+  color: #222;
+  width: 1587px; /* ~420mm at 96dpi, A3 landscape width */
+  padding: 40px 48px;
+  font-family: inherit;
+}
+
+.a3-poster-page-number {
+  margin: 20px 0 0;
+  padding-top: 10px;
+  border-top: 1px solid #ccc;
+  color: #999;
+  font-size: 0.78rem;
+  font-style: italic;
+  text-align: right;
+}
+
+.a3-poster-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  border-bottom: 3px solid #222;
+  padding-bottom: 14px;
+  margin-bottom: 24px;
+}
+.a3-poster-header h1 { margin: 0 0 4px; font-size: 1.6rem; }
+.a3-poster-header p { margin: 0; color: #666; font-size: 0.95rem; }
+.a3-poster-date { font-style: italic; color: #999 !important; }
+
+.a3-poster-columns {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+}
+
+.a3-poster-column { display: flex; flex-direction: column; gap: 10px; }
+.a3-poster-column--empty {
+  border: 1px dashed #ccc;
+  border-radius: 8px;
+  padding: 20px;
+  text-align: center;
+}
+.a3-poster-empty { color: #999; font-style: italic; }
+
+.a3-poster-drawing { transform: scale(1); transform-origin: top left; }
+
+.a3-poster-results-table, .a3-poster-inputs-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.78rem;
+}
+.a3-poster-results-table th, .a3-poster-results-table td,
+.a3-poster-inputs-table th, .a3-poster-inputs-table td {
+  border: 1px solid #ccc;
+  padding: 5px 7px;
+  text-align: left;
+}
+.a3-poster-results-table th { width: 90px; background: #f0efe9; }
+.a3-poster-inputs-table thead th { background: #f0efe9; font-weight: 600; }
+
+.a3-poster-footer {
+  margin-top: 28px;
+  border-top: 2px solid #222;
+  padding-top: 16px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+.a3-poster-footer h3 { font-size: 0.95rem; margin: 0 0 8px; }
+.a3-poster-totals p { margin: 0 0 8px; font-size: 0.85rem; }
+.a3-poster-note { color: #999; font-style: italic; font-size: 0.78rem !important; }
+.a3-poster-resources ul { margin: 0; padding-left: 18px; font-size: 0.78rem; }
+.a3-poster-resources li { margin-bottom: 4px; word-break: break-word; }

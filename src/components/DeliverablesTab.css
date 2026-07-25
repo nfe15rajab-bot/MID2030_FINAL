@@ -1,0 +1,112 @@
+.deliverables-tab { display: flex; flex-direction: column; gap: 16px; }
+.deliverables-intro { color: #666; font-size: 0.88rem; margin: 0; }
+
+.deliverable-block {
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px 16px;
+}
+
+.deliverable-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+.deliverable-name { font-weight: 600; font-size: 0.92rem; min-width: 160px; }
+/* "Blocked" means upstream data is missing, not a software error —
+   status-attention amber, not error red. */
+.deliverable-reason { color: var(--status-attention); font-size: 0.78rem; font-style: italic; }
+.deliverable-note { color: #888; font-size: 0.78rem; font-style: italic; margin: 4px 0 0; }
+
+.deliverable-row button {
+  padding: 6px 14px;
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: white;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.82rem;
+}
+.deliverable-row button:disabled { opacity: 0.5; cursor: not-allowed; background: #aaa; border-color: #aaa; }
+
+.deliverable-status {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 2px 9px;
+  border-radius: 10px;
+}
+.deliverable-status--ready { background: var(--status-complete-bg); color: var(--status-complete); }
+.deliverable-status--blocked { background: var(--status-attention-bg); color: var(--status-attention); }
+/* "Not yet automated" (A3 slides) is a genuinely different, neutral
+   4th state — nothing is wrong or incomplete, it's manual-by-design —
+   so it deliberately stays outside the complete/attention/error triad. */
+.deliverable-status--pending { background: #eee; color: #888; }
+
+.deliverable-checklist { margin: 6px 0 0; padding-left: 20px; font-size: 0.85rem; }
+.deliverable-checklist li { margin-bottom: 4px; }
+
+.deliverable-preview {
+  margin-top: 12px;
+  max-height: 500px;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 12px;
+  background: #f5f4f0;
+  display: flex;
+  justify-content: center;
+}
+.deliverable-preview .a4-report { transform-origin: top center; }
+
+.fiche-deliverable-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 0;
+  border-top: 1px solid var(--border);
+}
+.fiche-deliverable-row:first-of-type { border-top: none; }
+.fiche-deliverable-row > button {
+  align-self: flex-start;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.fiche-deliverable-status {
+  align-self: flex-start;
+  font-size: 0.72rem;
+  font-style: italic;
+}
+.fiche-deliverable-status--ready { color: var(--status-complete); }
+.fiche-deliverable-status--pending { color: var(--status-attention); }
+
+/* Right-pane missing-data checklist — see MissingDataChecklist in
+   DeliverablesTab.jsx. Same block/status-badge language as the
+   deliverable rows on the left, just grouped per assembly instead of
+   per output. */
+.deliverables-checklist h3 { margin: 0 0 10px; font-size: 1rem; }
+.deliverables-checklist-group {
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-bottom: 10px;
+}
+.deliverables-checklist-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.deliverables-checklist-group ul {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  font-size: 0.8rem;
+  color: #555;
+}
+.deliverables-checklist-group li { margin-bottom: 4px; }

@@ -1,0 +1,314 @@
+[
+  {
+    "id": "provider-schueco-bielefeld",
+    "materialIds": [
+      "door-schueco-ass77",
+      "window-schueco-aws75",
+      "door-water-dripping-slot",
+      "window-aluminium-angle-fixation",
+      "window-aluminium-drip-edge"
+    ],
+    "name": "Schüco International",
+    "address": "Schücostraße 1, 33609 Bielefeld, Germany",
+    "website": "https://www.schueco.com",
+    "lat": 52.0302,
+    "lng": 8.5325,
+    "distanceToDetmoldKm": 40,
+    "distanceToSiteKm": 370,
+    "geocodedAt": "Bielefeld headquarters"
+  },
+  {
+    "id": "provider-flachglas-wernberg",
+    "materialIds": [
+      "door-vetrosol-triple-glazing",
+      "window-vetrosol-triple-glazing"
+    ],
+    "name": "Flachglas Wernberg / vetroSol",
+    "address": "Nabburger Str. 1, 92533 Wernberg-Köblitz, Germany",
+    "website": "https://www.flachglas.de",
+    "lat": 49.5422,
+    "lng": 12.1558,
+    "distanceToDetmoldKm": 380,
+    "distanceToSiteKm": 370,
+    "geocodedAt": "Wernberg manufacturing plant"
+  },
+  {
+    "id": "provider-carlisle-eisenach",
+    "materialIds": [
+      "door-epdm-water-insulation",
+      "window-epdm-water-insulation"
+    ],
+    "name": "CARLISLE Construction Materials (RESITRIX)",
+    "address": "Eisenach, Germany",
+    "website": "https://www.resitrix.com",
+    "lat": 50.9749,
+    "lng": 10.3245,
+    "distanceToDetmoldKm": 210,
+    "distanceToSiteKm": 370,
+    "geocodedAt": "Eisenach production plant"
+  },
+  {
+    "id": "provider-baywa-bielefeld",
+    "materialIds": ["door-wooden-plate-fixation", "door-wooden-plate-33thk", "wall-spruce-cladding", "roof-spruce-rafters", "floor-wood-joist"],
+    "name": "BayWa Baustoffe Bielefeld",
+    "address": "Bielefeld, Germany",
+    "website": "https://www.baywa-baustoffe.de",
+    "lat": 52.0302,
+    "lng": 8.5325,
+    "distanceToDetmoldKm": 40,
+    "distanceToSiteKm": 370,
+    "geocodedAt": "Bielefeld branch"
+  },
+  {
+    "id": "provider-austrotherm-speyer",
+    "materialIds": ["door-perimeter-insulation"],
+    "name": "Austrotherm Dämmstoffe GmbH",
+    "address": "Speyer, Germany",
+    "website": "https://www.austrotherm.de",
+    "lat": 49.3172,
+    "lng": 8.4322,
+    "distanceToDetmoldKm": 330,
+    "distanceToSiteKm": 370,
+    "geocodedAt": "Speyer plant"
+  },
+  {
+    "id": "provider-prefa-marktl",
+    "materialIds": [
+      "door-bended-aluminium-sheet",
+      "window-sloped-aluminium-sill"
+    ],
+    "name": "PREFA Aluminium Produkte GmbH",
+    "address": "Werkstraße 1, 3182 Marktl, Austria",
+    "website": "https://www.prefa.com",
+    "lat": 48.0468,
+    "lng": 15.5862,
+    "distanceToDetmoldKm": 680,
+    "distanceToSiteKm": 370,
+    "geocodedAt": "Marktl manufacturing plant"
+  },
+  {
+    "id": "provider-illbruck-bodenwoehr",
+    "materialIds": ["door-backer-rod-silicone"],
+    "name": "tremco CPG Germany GmbH (illbruck)",
+    "address": "Werksstraße 1, 92439 Bodenwöhr, Germany",
+    "website": "https://www.illbruck.com",
+    "lat": 49.3114,
+    "lng": 12.3089,
+    "distanceToDetmoldKm": 420,
+    "distanceToSiteKm": 370,
+    "geocodedAt": "Bodenwöhr plant"
+  },
+  {
+    "id": "provider-fakro-nowysacz",
+    "materialIds": ["skylight-fakro-fx-g31"],
+    "name": "Fakro",
+    "address": "Nowy Sącz, Poland",
+    "website": null,
+    "lat": 49.6167,
+    "lng": 20.7167,
+    "distanceToDetmoldKm": null,
+    "distanceToSiteKm": null,
+    "geocodedAt": "approximate — Nowy Sącz city-center placeholder from the midterm deck, re-geocode exact address with Nominatim for final figures"
+  },
+  {
+    "id": "provider-bauhaus-bielefeld",
+    "materialIds": ["floor-linoleum"],
+    "name": "Bauhaus Bielefeld",
+    "address": "Detmold-str. 80, Bielefeld, Germany",
+    "website": null,
+    "lat": 52.0302,
+    "lng": 8.5325,
+    "distanceToDetmoldKm": null,
+    "distanceToSiteKm": null,
+    "geocodedAt": "approximate — Bielefeld city-center placeholder"
+  },
+  {
+    "id": "provider-obi-detmold",
+    "materialIds": [
+      "wall-steico-universal-black",
+      "roof-steico-universal-dry"
+    ],
+    "name": "OBI Detmold / Naturanum",
+    "address": "Klingenbergstr. 31, Detmold, Germany",
+    "website": null,
+    "lat": 51.937,
+    "lng": 8.877,
+    "distanceToDetmoldKm": 1,
+    "distanceToSiteKm": null,
+    "geocodedAt": "approximate — Detmold city-center placeholder (this retailer is essentially at Detmold, so distanceToDetmoldKm ~= 0-2km once the factory address is pinned)"
+  },
+  {
+    "id": "provider-holzbrinkmann-bielefeld",
+    "materialIds": [
+      "wall-timber-batten-softwood",
+      "roof-battens-30mm",
+      "floor-pine-floorboard",
+      "floor-osb-fixing-battens-22mm",
+      "floor-timber-ledger-strip-25mm"
+    ],
+    "name": "Holz Brinkmann Bielefeld (or Bauzentrum OWL)",
+    "address": "Bielefeld, Germany",
+    "website": null,
+    "lat": 52.0302,
+    "lng": 8.5325,
+    "distanceToDetmoldKm": null,
+    "distanceToSiteKm": null,
+    "geocodedAt": "approximate — Bielefeld city-center placeholder, exact street TBD"
+  },
+  {
+    "id": "provider-baywa-bielefeld",
+    "materialIds": [],
+    "name": "BayWa Baustoffe Bielefeld",
+    "address": "Bielefeld, Germany",
+    "website": null,
+    "lat": 52.0302,
+    "lng": 8.5325,
+    "distanceToDetmoldKm": null,
+    "distanceToSiteKm": null,
+    "geocodedAt": "not currently linked to a material — floor-agepan-thd-static (the placeholder this was originally for) is superseded by floor-agepan-dwd-protect, now linked to Sonae Arauco's own real Meppen plant (provider-sonaearauco-meppen) instead. Kept in case a BayWa-sourced material reappears."
+  },
+  {
+    "id": "provider-forbo-linoleum",
+    "materialIds": [],
+    "name": "Forbo Flooring Systems",
+    "address": "Krommenie, Netherlands (approximate — verify exact plant address)",
+    "website": null,
+    "lat": 52.503,
+    "lng": 4.766,
+    "distanceToDetmoldKm": null,
+    "distanceToSiteKm": null,
+    "geocodedAt": "kept from earlier assumption, but not currently linked to a material — the deck's flooring section sources linoleum via Bauhaus Bielefeld instead. Team needs to confirm which is the real final choice; if Forbo, relink materialIds to floor-linoleum here and clear it from provider-bauhaus-bielefeld."
+  },
+  {
+    "id": "provider-metsa-plywood",
+    "materialIds": [],
+    "name": "Metsä Wood",
+    "address": "Espoo, Finland (approximate — verify exact mill address)",
+    "website": null,
+    "lat": 60.2055,
+    "lng": 24.6559,
+    "distanceToDetmoldKm": null,
+    "distanceToSiteKm": null,
+    "geocodedAt": "not currently used in this deck's assemblies — kept in case plywood reappears in a later revision"
+  },
+  {
+    "id": "provider-kronoply-heiligengrabe",
+    "materialIds": ["wall-kronoply-osb4-18", "roof-kronoply-osb4-18", "floor-swisskrono-osb3-22mm"],
+    "name": "Kronoply GmbH",
+    "address": "Wittstocker Chaussee 1, 16909 Heiligengrabe, Germany",
+    "website": "https://www.kronoply.com",
+    "lat": 53.1471628,
+    "lng": 12.3793247,
+    "distanceToDetmoldKm": null,
+    "distanceToSiteKm": null,
+    "geocodedAt": "2026-07-11 — live web search + Nominatim exact match on the manufacturer's own factory address. 2026-07-25: linked floor-swisskrono-osb3-22mm here too — SWISS KRONO Group's German OSB production runs through this same Kronoply-branded plant."
+  },
+  {
+    "id": "provider-steico-feldkirchen",
+    "materialIds": ["wall-steico-flex-036", "roof-steico-flex-260"],
+    "name": "STEICO SE",
+    "address": "Otto-Lilienthal-Ring 30, 85622 Feldkirchen, Germany",
+    "website": "https://www.steico.com",
+    "lat": 48.1394413,
+    "lng": 11.7378842,
+    "distanceToDetmoldKm": null,
+    "distanceToSiteKm": null,
+    "geocodedAt": "2026-07-11 — live web search + Nominatim exact match on the company's registered office/HQ address; STEICO's actual production plant for this SKU may differ (STEICO manufactures across several EU sites) — other STEICO materials in this deck (wall-steico-universal-black, floor-steico-universal-dry-screed, floor-steico-insulation-200) stay linked to OBI Detmold as the deck's specified retailer"
+  },
+  {
+    "id": "provider-cetris-hranice",
+    "materialIds": ["wall-cetris-lasur"],
+    "name": "CIDEM Hranice a.s., divize CETRIS",
+    "address": "Nová 223, 753 01 Hranice I-Město, Czech Republic",
+    "website": "https://www.cetris.cz",
+    "lat": 49.5605250,
+    "lng": 17.7530550,
+    "distanceToDetmoldKm": null,
+    "distanceToSiteKm": null,
+    "geocodedAt": "2026-07-11 — live web search + Nominatim exact match on the manufacturer's factory address"
+  },
+  {
+    "id": "provider-proclima-schwetzingen",
+    "materialIds": ["wall-proclima-intello-plus"],
+    "name": "pro clima — MOLL bauökologische Produkte GmbH",
+    "address": "Rheintalstraße 35-43, 68723 Schwetzingen, Germany",
+    "website": "https://www.proclima.com",
+    "lat": 49.4047625,
+    "lng": 8.5566750,
+    "distanceToDetmoldKm": null,
+    "distanceToSiteKm": null,
+    "geocodedAt": "2026-07-11 — live web search confirmed street address; Nominatim only resolved to street-level (no building-level hit), so lat/lng are street-centroid, not the exact building — floor-proclima-intello-vcl stays linked to OBI Detmold as the deck's specified retailer"
+  },
+  {
+    "id": "provider-knauf-iphofen",
+    "materialIds": ["wall-knauf-diamant-plasterboard", "roof-knauf-diamant-plasterboard"],
+    "name": "Knauf Gips KG",
+    "address": "Am Bahnhof 7, 97346 Iphofen, Germany",
+    "website": "https://www.knauf.de",
+    "lat": 49.7005925,
+    "lng": 10.2507892,
+    "distanceToDetmoldKm": null,
+    "distanceToSiteKm": null,
+    "geocodedAt": "2026-07-11 — live web search + Nominatim exact match on the company's headquarters address (Knauf's Diamant board plant may be a different site within the group — HQ used as best available address)"
+  },
+  {
+    "id": "provider-sempergreen-odijk",
+    "materialIds": ["roof-sedum-substrate"],
+    "name": "Sempergreen Group",
+    "address": "Defensieweg 1, 3984 LR Odijk, Netherlands",
+    "website": "https://www.sempergreen.com",
+    "lat": 52.0400955,
+    "lng": 5.2157726,
+    "distanceToDetmoldKm": null,
+    "distanceToSiteKm": null,
+    "geocodedAt": "2026-07-11 — live web search + Nominatim exact name+address match"
+  },
+  {
+    "id": "provider-geoplast-grantorto",
+    "materialIds": ["roof-geoplast-drainroof-h6"],
+    "name": "Geoplast SpA",
+    "address": "Via Martiri della Libertà 6/8, 35010 Grantorto (PD), Italy",
+    "website": "https://www.geoplastglobal.com",
+    "lat": 45.6065466,
+    "lng": 11.7307043,
+    "distanceToDetmoldKm": null,
+    "distanceToSiteKm": null,
+    "geocodedAt": "2026-07-11 — live web search confirmed street address; Nominatim only resolved to street-level (no building-level hit), so lat/lng are street-centroid, not the exact building"
+  },
+  {
+    "id": "provider-daprona-itzehoe",
+    "materialIds": ["roof-daprona-mesh"],
+    "name": "Daprona (brand of BMSC GmbH)",
+    "address": "Itzehoe, Germany (city-level only — live search found DAPRONA registered as a BMSC GmbH trademark based in Itzehoe, but no confirmed street address or manufacturing site; do not treat as precise)",
+    "website": null,
+    "lat": 53.9194480,
+    "lng": 9.5172441,
+    "distanceToDetmoldKm": null,
+    "distanceToSiteKm": null,
+    "geocodedAt": "2026-07-11 — low confidence: live web search only turned up a trademark registration (BMSC GmbH, Itzehoe), not a manufacturer press page or factory address — flag for team follow-up before using in a final figure"
+  },
+  {
+    "id": "provider-steico-czarnawoda",
+    "materialIds": ["floor-steicofloor-60mm", "floor-steico-insulation-200"],
+    "name": "STEICO SE (Czarna Woda plant)",
+    "address": "Czarna Woda, Poland",
+    "website": "https://www.steico.com",
+    "lat": 53.9167,
+    "lng": 18.1167,
+    "distanceToDetmoldKm": null,
+    "distanceToSiteKm": null,
+    "geocodedAt": "2026-07-25 — approximate, Czarna Woda town-center placeholder (real street address not confirmed); this specific STEICO plant was already named in the team's own group2_v2 Excel research (gv2-floor-steicouniversal-dry etc.) as the source for floor-specific STEICO products, distinct from the Feldkirchen HQ used for wall/roof STEICOflex"
+  },
+  {
+    "id": "provider-sonaearauco-meppen",
+    "materialIds": ["floor-agepan-dwd-protect"],
+    "name": "Sonae Arauco Deutschland GmbH (Meppen plant)",
+    "address": "Meppen, Germany",
+    "website": "https://www.sonaearauco.com",
+    "lat": 52.6833,
+    "lng": 7.2917,
+    "distanceToDetmoldKm": null,
+    "distanceToSiteKm": null,
+    "geocodedAt": "2026-07-25 — approximate, Meppen town-center placeholder (real street address not confirmed); confirmed via live web search (Sonae Arauco's 2025 AGEPAN System wood-fibre investment announcement names Meppen) and independently corroborated by the team's own group2_v2 Excel research (gv2-floor-agepanthdstatic), which already named this same Meppen plant"
+  }
+]

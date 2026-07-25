@@ -1,0 +1,1005 @@
+:root {
+  --border: #d8d8d0;
+  --accent: #3f6b4f;
+  --bg: #faf9f6;
+
+  /* Consolidated 3-color status system. Use these everywhere a
+     completeness/confidence/readiness signal is shown — status badges,
+     missing-data notices, AI-drafted banners, verified/unverified map
+     pins. Never introduce a 4th "meaning" color into this set.
+     - status-complete: verified / ready / done.
+     - status-attention: needs attention / incomplete / unverified — was
+       previously an inconsistent mix of orange (#8a6d1d) and red
+       (#a13d3d) across different components; consolidated to one amber.
+     - status-error: reserved for actual blocking errors (a failed
+       fetch, a failed export) — NOT "missing data", which is normal
+       in-progress state and belongs under status-attention instead.
+     Deliberately NOT part of this system: provenance tags like
+     ai-suggested/manual-entry (FicheTechnique.css) describe WHERE a
+     value came from, not its status, so they intentionally use their
+     own purple/blue outside this palette; the fiche sheet's red field
+     labels (.fiche-label) are a fixed design-language choice matching
+     the class reference layout, not a status signal. */
+  --status-complete: #2f6b3a;
+  --status-complete-bg: #e4f0e6;
+  --status-attention: #8a6d1d;
+  --status-attention-bg: #fdf0e4;
+  --status-error: #a13d3d;
+  --status-error-bg: #fdeaea;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: 'Inter', system-ui, sans-serif;
+  background: var(--bg);
+  color: #222;
+}
+
+.app {
+  max-width: 1520px;
+  margin: 0 auto;
+  padding: 32px 32px;
+}
+
+/* Two-pane split shell — Section Configurator, Assembly Analysis Preview,
+   Providers, and Deliverables tabs each use this same left/right layout
+   (see each tab's own CSS for pane-specific sizing). Kept as one shared
+   pattern rather than four bespoke ones so they stay visually consistent. */
+.split-pane {
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+}
+.split-pane-left,
+.split-pane-right {
+  flex: 1 1 0;
+  min-width: 0;
+}
+/* Independently scrollable, height-capped so a long right pane (e.g. a
+   fiche editor) never forces the whole page to scroll past the left
+   pane's content — matches how real two-pane apps (mail, docs) behave. */
+.split-pane-scroll {
+  max-height: calc(100vh - 220px);
+  overflow-y: auto;
+  padding-right: 4px;
+}
+@media (max-width: 900px) {
+  .split-pane { flex-direction: column; }
+  .split-pane-scroll { max-height: none; overflow-y: visible; }
+}
+
+/* Section Configurator split — layer rows (thickness/λ/GWP/density +
+   Suggest buttons each) need more horizontal room than the 3D viewer
+   does, so the right pane gets more of the split than a plain 50/50. */
+.sections-split .split-pane-left { flex: 0 1 40%; }
+.sections-split .split-pane-right { flex: 1 1 60%; }
+.sections-split h2 { font-size: 1.1rem; margin-bottom: 10px; }
+
+/* Assembly Analysis Preview split — editor (left) needs the same room as
+   Section Configurator's layer rows; results pane (right) is lighter
+   (a few text rows + one chart), so it can be narrower. */
+.assembly-analysis-split .split-pane-left { flex: 1 1 55%; }
+.assembly-analysis-split .split-pane-right { flex: 1 1 45%; }
+
+/* Providers tab split — the right pane stacks the material list AND the
+   full fiche editor (a genuinely long form), so it gets more width than
+   the map on the left. */
+.providers-split .split-pane-left { flex: 0 1 38%; }
+.providers-split .split-pane-right { flex: 1 1 62%; }
+
+/* Unclassified-layer fallback in the Providers tab's left pane — the
+   fiche's own mini map (FicheMap.jsx) is a small fixed-size inset designed
+   to sit next to a paragraph of text, not fill a ~400px-tall pane on its
+   own, so center it instead of leaving it stranded top-left. */
+.providers-unclassified-map {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding-top: 24px;
+}
+.providers-unclassified-map .empty-state { max-width: 320px; }
+
+/* Deliverables split — left (the actual outputs/buttons) is the primary
+   content; right (missing-data checklist) is reference material, so it
+   stays narrower. */
+.deliverables-split .split-pane-left { flex: 1 1 62%; }
+.deliverables-split .split-pane-right { flex: 0 1 38%; }
+
+header h1 { font-size: 1.4rem; margin-bottom: 2px; }
+header p { color: #666; margin-top: 0; font-size: 0.9rem; }
+.header-identity { margin-top: 6px; font-size: 0.85rem; }
+
+/* 3D viewer split — the viewer is the primary content, the identity
+   panel is a narrow sidebar next to it. */
+.model-split .split-pane-left { flex: 1 1 70%; }
+.model-split .split-pane-right { flex: 0 1 30%; }
+
+.identity-panel {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px 16px;
+}
+.identity-panel h3 { font-size: 0.95rem; margin: 0 0 10px; }
+.identity-current { font-size: 0.85rem; margin: 0; }
+.identity-switch-link {
+  border: none;
+  background: none;
+  color: var(--accent, #2b6cb0);
+  cursor: pointer;
+  padding: 0;
+  font-size: 0.85rem;
+  text-decoration: underline;
+}
+.identity-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.85rem;
+  color: #444;
+  margin-bottom: 10px;
+}
+.identity-field select,
+.identity-field input[type='text'] {
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+.identity-other button {
+  margin-top: 6px;
+}
+.identity-hint {
+  font-size: 0.78rem;
+  color: #777;
+  margin: 6px 0 0;
+}
+.identity-session-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.app-tabs {
+  display: flex;
+  gap: 8px;
+  margin: 20px 0;
+  border-bottom: 1px solid var(--border);
+}
+.app-tabs button {
+  padding: 8px 16px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 0.9rem;
+  color: #666;
+  border-bottom: 2px solid transparent;
+}
+.app-tabs button.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+  font-weight: 600;
+}
+
+.providers-tab {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.providers-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.providers-group h3 {
+  font-size: 0.95rem;
+  margin-bottom: 6px;
+}
+.providers-group-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.providers-layer-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: white;
+  cursor: pointer;
+  text-align: left;
+}
+.providers-layer-row.active {
+  border-color: var(--accent);
+  background: #eef4ee;
+}
+.providers-layer-meta { color: #888; font-size: 0.8rem; white-space: nowrap; }
+.section-badge {
+  text-transform: capitalize;
+  background: var(--border);
+  border-radius: 10px;
+  padding: 1px 8px;
+  font-size: 0.72rem;
+}
+
+.providers-detail {
+  border-top: 1px solid var(--border);
+  padding-top: 16px;
+}
+.providers-detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+.providers-detail-header button {
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  background: white;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.82rem;
+}
+.providers-detail .section-sheet { margin-bottom: 16px; }
+.fiche-override-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.82rem;
+  color: #555;
+  margin: 12px 0;
+}
+
+.providers-distance-line {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 0.82rem;
+  color: #555;
+  margin: 4px 0 12px;
+}
+.providers-distance-line button {
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  background: white;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.78rem;
+}
+.providers-distance-line button:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.providers-tab-root {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.providers-preview-picker {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 0.8rem;
+  color: #666;
+  margin-bottom: 10px;
+}
+button.section-badge {
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+button.section-badge.active {
+  background: var(--accent);
+  color: white;
+}
+
+.materials-summary {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fafaf8;
+  padding: 14px 16px;
+}
+.materials-summary-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.materials-summary-header h3 { margin: 0; font-size: 0.95rem; }
+.materials-summary-actions {
+  display: flex;
+  gap: 8px;
+}
+.materials-summary-actions button {
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  background: white;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.82rem;
+}
+.materials-summary-actions button:disabled { opacity: 0.6; cursor: not-allowed; }
+.materials-summary-hint { color: #777; font-size: 0.78rem; margin: 8px 0 0; white-space: pre-line; }
+.materials-summary-table-wrap {
+  overflow-x: auto;
+  margin-top: 12px;
+}
+.materials-summary-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+.materials-summary-table th,
+.materials-summary-table td {
+  text-align: left;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+.materials-summary-table th { color: #777; font-weight: 600; }
+.materials-summary-discipline-row td {
+  background: #f0efe9;
+  font-weight: 600;
+  color: #555;
+  border-bottom: none;
+}
+
+.material-core-values {
+  border-top: 1px solid var(--border);
+  padding-top: 14px;
+  margin: 14px 0;
+}
+.material-core-values h4 { margin: 0 0 10px; font-size: 0.9rem; }
+.material-core-values-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.material-core-values-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.82rem;
+  color: #555;
+}
+.material-core-values-field input {
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: 0.85rem;
+  width: 140px;
+}
+.material-core-values button {
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  background: white;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.82rem;
+}
+.material-core-values button:disabled { opacity: 0.6; cursor: not-allowed; }
+.material-core-values-hint { color: #888; font-size: 0.78rem; font-style: italic; margin: 8px 0 0; }
+
+.section-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.section-tabs button {
+  padding: 6px 14px;
+  border: 1px solid var(--border);
+  background: white;
+  border-radius: 20px;
+  cursor: pointer;
+  text-transform: capitalize;
+}
+.section-tabs button.active {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+}
+
+.add-layer-controls {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.add-layer-controls select {
+  flex: 1;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+.add-layer-controls button {
+  padding: 8px 14px;
+  border: none;
+  background: var(--accent);
+  color: white;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.layer-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 20px;
+}
+
+.layer-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 12px;
+}
+/* GWP + density + λ all populated (verified or not — see
+   isLayerDataComplete in LayerBuilder.jsx) — reuses the shared
+   status-complete token, not a new color. Partially-filled rows stay
+   neutral (plain .layer-row above); individual missing fields still get
+   their own amber treatment (.layer-thickness--missing etc.) regardless
+   of this row-level signal. */
+.layer-row--complete {
+  background: var(--status-complete-bg);
+  border-color: var(--status-complete);
+}
+.layer-row .field-suggest { flex-basis: 100%; }
+.layer-row .field-suggest-trigger { flex-basis: auto; }
+.drag-handle { cursor: grab; color: #999; }
+.layer-order {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: white;
+  font-size: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.layer-name { flex: 1; }
+.layer-thickness {
+  width: 60px;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+.layer-thickness--missing { border-color: var(--status-attention); background: var(--status-attention-bg); }
+.layer-unit { color: #888; font-size: 0.85rem; }
+.layer-lambda { color: #888; font-size: 0.8rem; width: 90px; }
+.layer-gwp { color: #888; font-size: 0.8rem; width: 110px; }
+.layer-density { color: #888; font-size: 0.8rem; width: 110px; }
+.layer-service-life { color: #888; font-size: 0.8rem; }
+/* "Not yet researched" — same amber missing-data language as
+   .layer-thickness--missing, just text rather than an input border since
+   there's no always-visible input for this field (only Suggest/manual
+   controls, shown separately below). */
+.layer-service-life--missing { color: var(--status-attention); font-style: italic; }
+/* Deliberately its own two-state palette (verified/unverified), not the
+   shared field-suggest-badge system — service life's tiers ("Verified —
+   EPD sourced", "Unverified — AI sourced", "Verified — manual") collapse
+   to exactly two visual states regardless of which of the three tiers
+   produced the value, unlike the high/medium/low confidence scale
+   everywhere else. */
+.service-life-badge { font-size: 0.72rem; font-weight: 600; padding: 1px 8px; border-radius: 10px; }
+.service-life-badge--verified { background: var(--status-complete-bg); color: var(--status-complete); }
+.service-life-badge--unverified { background: var(--status-attention-bg); color: var(--status-attention); }
+
+.layer-eol-impact { color: #888; font-size: 0.8rem; flex-basis: 100%; }
+
+/* EndOfLifeImpactField's manual-entry form — same input styling as
+   .field-suggest-result, laid out in rows since it has more fields
+   (3 percentages, 4 impact numbers, a basis note) than any other
+   Suggest-pattern field in this app. */
+.eol-impact-manual {
+  flex-basis: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border: 1px dashed var(--border);
+  border-radius: 6px;
+  padding: 8px 10px;
+  margin-top: 6px;
+}
+.eol-impact-row { display: flex; gap: 6px; flex-wrap: wrap; }
+.eol-impact-row input {
+  flex: 1;
+  min-width: 90px;
+  padding: 5px 7px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  font-family: inherit;
+  font-size: 0.8rem;
+}
+.eol-impact-manual textarea {
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: 0.82rem;
+  resize: vertical;
+}
+.eol-impact-manual > button {
+  align-self: flex-start;
+  padding: 5px 12px;
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: white;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+.eol-impact-summary {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-size: 0.8rem;
+  color: #444;
+}
+
+/* OperationalEnergySettings — same box treatment as .fiche-editor, reused
+   fiche-editor-field label/input styling for the three inputs. */
+.operational-energy-settings {
+  background: #f7f6f2;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+.operational-energy-settings h3 { margin: 0 0 2px; font-size: 1rem; }
+.operational-energy-settings h4 { margin: 10px 0 0; font-size: 0.85rem; color: #555; border-top: 1px solid var(--border); padding-top: 10px; }
+
+.okobaudat-search-section {
+  margin-bottom: 16px;
+}
+
+.custom-material-form {
+  background: #f7f6f2;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.custom-material-hint { color: #888; font-size: 0.8rem; font-style: italic; margin: 0; }
+.custom-material-row { display: flex; gap: 12px; }
+/* min-width:0 — same flexbox shrink-refusal fix as .lca-geometry-field
+   (LcaEpdTab.css): without it, a plain input's browser-default intrinsic
+   width can exceed this field's flex-shrunk share of the row, pushing it
+   past the row's edge instead of shrinking to fit. */
+.custom-material-row .fiche-editor-field { flex: 1; min-width: 0; }
+.custom-material-actions { display: flex; gap: 8px; margin-top: 4px; }
+.custom-material-actions button[type="submit"] {
+  padding: 8px 14px;
+  border: none;
+  background: var(--accent);
+  color: white;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.custom-material-actions button[type="button"] {
+  padding: 8px 14px;
+  border: 1px solid var(--border);
+  background: white;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.layer-remove {
+  border: none;
+  background: none;
+  color: #b04a4a;
+  cursor: pointer;
+  font-size: 1rem;
+}
+
+.layer-change-material {
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  background: white;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+.layer-change-material-panel {
+  flex-basis: 100%;
+  background: #f7f6f2;
+  border: 1px solid var(--border);
+  border-top: none;
+  border-radius: 0 0 8px 8px;
+  padding: 10px 14px;
+  margin: -6px 0 10px;
+}
+.change-material-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.change-material-controls button {
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  background: white;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+.change-material-note {
+  color: #777;
+  font-size: 0.78rem;
+  font-style: italic;
+  margin: 8px 0 0;
+}
+
+.empty-state { color: #999; font-style: italic; }
+
+.uvalue-summary {
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px 16px;
+}
+.uvalue-summary strong { color: var(--accent); }
+.uvalue-summary .gwp-caveat { color: #999; font-size: 0.78rem; font-style: italic; margin-top: 4px; }
+
+.gwp-per-m2-summary {
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px 16px;
+  margin-top: 12px;
+}
+.gwp-per-m2-summary h4 { margin: 0 0 6px; font-size: 0.9rem; }
+.gwp-per-m2-summary .gwp-caveat { color: #999; font-size: 0.78rem; font-style: italic; margin: 0 0 10px; }
+.gwp-per-m2-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+.gwp-per-m2-table th, .gwp-per-m2-table td { border: 1px solid var(--border); padding: 5px 8px; text-align: left; }
+.gwp-per-m2-table thead th { background: #f0efe9; }
+.gwp-per-m2-table tfoot td { background: #f7f6f1; }
+.gwp-per-m2-table td:last-child, .gwp-per-m2-table th:last-child { text-align: right; }
+
+.section-save-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 16px 0;
+}
+.section-save-bar button {
+  padding: 8px 14px;
+  border: none;
+  background: var(--accent);
+  color: white;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.section-save-bar button:disabled { background: #aaa; cursor: not-allowed; }
+.section-save-hint { color: #888; font-size: 0.8rem; }
+
+/* Section-level editing lock banner — see sectionLocks.js/LayerBuilder.jsx. */
+.lock-banner {
+  padding: 10px 14px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  margin-bottom: 14px;
+}
+.lock-banner--locked { background: #fdecea; border: 1px solid #f2b8b5; color: #8a2c22; }
+.lock-banner--admin-override { background: #fff4e0; border: 1px solid #f3cf8a; color: #7a5100; }
+.layer-builder-content--locked,
+.unit-assembly-content--locked {
+  pointer-events: none;
+  opacity: 0.55;
+  user-select: none;
+}
+
+/* UnitAssemblyBuilder — Door/Window/Skylight's editor. Reuses
+   .add-layer-controls/.layer-stack/.layer-row/.okobaudat-search-section/
+   .custom-material-row/.fiche-editor-field as-is (same visual language as
+   LayerBuilder/CustomMaterialForm); only a handful of new classes. */
+.unit-section-heading { font-size: 1rem; margin: 20px 0 8px; }
+.unit-product-panel {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin: 10px 0 6px;
+}
+.unit-product-name { margin: 0 0 8px; }
+.unit-product-row { display: flex; gap: 12px; margin-bottom: 10px; }
+.unit-product-row .fiche-editor-field { flex: 1; min-width: 0; }
+.unit-research-fields { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 6px; }
+.unit-spec-form { display: flex; flex-direction: column; gap: 10px; margin-bottom: 10px; }
+.unit-spec-form textarea { padding: 6px 8px; border: 1px solid var(--border); border-radius: 6px; font: inherit; resize: vertical; }
+.unit-membranes-hint { color: #888; font-size: 0.8rem; margin: 0 0 8px; }
+.unit-preview h4 { font-size: 0.9rem; margin: 12px 0 4px; }
+.unit-preview ul { margin: 0; padding-left: 18px; font-size: 0.85rem; }
+
+/* SharedDataBanner — live "last edited by/at" indicator for the shared
+   Firestore-backed λ/GWP overlay. Same muted-hint styling as
+   .section-save-hint, distinguished only when Firestore is unreachable
+   (amber, same as everywhere else the app flags "needs attention"). */
+.shared-data-banner { color: #888; font-size: 0.8rem; margin: 0 0 10px; }
+.shared-data-banner strong { color: var(--accent); }
+.shared-data-banner--offline { color: var(--status-attention); }
+
+.firestore-sync-panel {
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+.firestore-sync-panel button {
+  padding: 7px 12px;
+  border: 1px solid var(--accent);
+  background: white;
+  color: var(--accent);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+.firestore-sync-panel button:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.section-preview-heading { font-size: 1rem; margin: 20px 0 10px; }
+
+.roof-pitch-input {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  margin-bottom: 10px;
+}
+.roof-pitch-input input {
+  width: 60px;
+  padding: 4px 6px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.export-button-row {
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+.export-pdf-button {
+  padding: 8px 14px;
+  border: 1px solid var(--border);
+  background: white;
+  color: #666;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.export-pdf-button:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.export-scale-button {
+  padding: 8px 14px;
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: white;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+}
+.export-scale-button:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.scale-export-error {
+  margin-top: 8px;
+  color: var(--status-error);
+  font-size: 0.82rem;
+}
+
+.provider-summary {
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-top: 10px;
+  font-size: 0.9rem;
+}
+.provider-summary .note { color: #999; font-size: 0.8rem; font-style: italic; }
+.marker-site { filter: hue-rotate(120deg); }
+
+.team-summary { margin-top: 8px; }
+.team-summary-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+  background: white;
+}
+.team-summary-table th,
+.team-summary-table td {
+  border: 1px solid var(--border);
+  padding: 4px 8px;
+  text-align: left;
+}
+.team-summary-table thead th {
+  background: #eeece3;
+  font-weight: 600;
+}
+.team-summary-group-header td {
+  background: #e2e0d4;
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.03em;
+}
+.team-summary-subtotal-row td {
+  font-weight: 600;
+  border-top: 2px solid #222;
+}
+.team-summary-total-row td {
+  font-weight: 700;
+  border-top: 3px double #222;
+  font-size: 0.9rem;
+}
+.team-summary-empty-row { color: #999; font-style: italic; }
+.team-summary-caveat { color: #999; font-size: 0.78rem; font-style: italic; margin-top: 8px; }
+
+.model-section { margin-bottom: 24px; }
+.model-section h2 { font-size: 1.1rem; margin-bottom: 10px; }
+.model-viewer {
+  position: relative;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.model-viewer-canvas-mount { width: 100%; height: 480px; position: relative; }
+.model-hotspot {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 28px;
+  height: 28px;
+  margin: -14px 0 0 -14px; /* center the dot on its projected point */
+  border-radius: 50%;
+  border: 2px solid white;
+  /* Default: this hotspot's section has no saved data yet (or, for the
+     read-only spec cards, is just an unreviewed reference) — same
+     status-attention amber used everywhere else for "needs attention",
+     not an arbitrary independent red. */
+  background: var(--status-attention);
+  color: white;
+  font-weight: bold;
+  font-size: 0.85rem;
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.4);
+  z-index: 5;
+}
+.model-hotspot:hover { filter: brightness(0.92); transform-origin: center; }
+/* Wall/roof/floor hotspot whose section already has saved layers. */
+.model-hotspot--complete { background: var(--status-complete); }
+.model-hotspot--complete:hover { filter: brightness(0.92); }
+.hotspot-hint { color: #888; font-size: 0.85rem; margin-top: 8px; }
+
+.configurator-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 20px;
+}
+.configurator-panel {
+  background: white;
+  border-radius: 10px;
+  max-width: 720px;
+  width: 100%;
+  max-height: 85vh;
+  overflow-y: auto;
+  padding: 24px;
+}
+.configurator-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+.configurator-close {
+  border: none;
+  background: none;
+  font-size: 1.2rem;
+  cursor: pointer;
+  color: #666;
+}
+.configurator-spec ul { padding-left: 20px; }
+.configurator-spec h4 { margin-top: 16px; margin-bottom: 6px; }
+.spec-note { color: #888; font-size: 0.85rem; font-style: italic; margin-top: 12px; }
+
+.configurator-progress-figures {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin-bottom: 16px;
+  font-size: 0.9rem;
+}
+.configurator-progress h4 { margin: 0 0 8px; font-size: 0.9rem; }
+.configurator-progress-done {
+  color: var(--status-complete);
+  background: var(--status-complete-bg);
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 0.85rem;
+}
+.configurator-progress-list {
+  color: var(--status-attention);
+  background: var(--status-attention-bg);
+  border-radius: 6px;
+  padding: 10px 14px 10px 30px;
+  font-size: 0.85rem;
+  margin: 0;
+}
+.configurator-progress-list li { margin-bottom: 4px; }
+.configurator-progress-open {
+  margin-top: 16px;
+  padding: 8px 16px;
+  border: none;
+  background: var(--accent);
+  color: white;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.configurator-conclusion { margin: 16px 0; }
+.configurator-conclusion h4 { margin: 0 0 8px; font-size: 0.9rem; }
+.conclusion-band {
+  border-radius: 6px;
+  padding: 10px 14px;
+  margin-bottom: 10px;
+  border: 1px solid var(--border);
+}
+.conclusion-band--very, .conclusion-band--sustainable {
+  background: var(--status-complete-bg);
+  border-color: var(--status-complete);
+}
+.conclusion-band--moderate {
+  background: var(--status-attention-bg);
+  border-color: var(--status-attention);
+}
+.conclusion-band--less {
+  background: var(--status-error-bg);
+  border-color: var(--status-error);
+}
+.conclusion-band-title { display: block; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.03em; color: #666; }
+.conclusion-band--very .conclusion-band-label, .conclusion-band--sustainable .conclusion-band-label { color: var(--status-complete); }
+.conclusion-band--moderate .conclusion-band-label { color: var(--status-attention); }
+.conclusion-band--less .conclusion-band-label { color: var(--status-error); }
+.conclusion-band-label { display: block; font-weight: 700; font-size: 1rem; margin: 2px 0 4px; }
+.conclusion-band-reason { margin: 0 0 4px; font-size: 0.85rem; }
+.conclusion-band-caveat { margin: 0; font-size: 0.72rem; color: #888; font-style: italic; cursor: help; }
+
+.model-viewer-status {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  background: white;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+}
+.model-viewer-status.error { color: var(--status-error); }

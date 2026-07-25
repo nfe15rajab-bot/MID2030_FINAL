@@ -1,0 +1,14 @@
+{
+  "site": {
+    "name": "Model 1 Site — Batavierenplantsoen, Haarlem",
+    "lat": 52.3874,
+    "lng": 4.6462,
+    "note": "approximate, city-center placeholder — pin the exact plot address before final submission"
+  },
+  "detmoldFactory": {
+    "name": "Detmold Factory",
+    "lat": 51.937,
+    "lng": 8.877,
+    "note": "approximate, Detmold city-center placeholder — pin exact factory address before final submission"
+  }
+}

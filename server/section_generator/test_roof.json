@@ -1,0 +1,50 @@
+{
+  "section": "Roof",
+  "owner": "Alejandro",
+  "savedAt": "2026-07-11T08:29:46.245Z",
+  "pitchDeg": 20,
+  "layers": [
+    {
+      "materialId": "roof-sedum-substrate",
+      "name": "Semper Green Sedum — Green Roof System",
+      "thicknessMM": null,
+      "thermalConductivityWmK": null,
+      "gwpA1A3PerFunctionalUnit": null
+    },
+    {
+      "materialId": "roof-geoplast-drainroof-h6",
+      "name": "Geoplast Drainroof H6",
+      "thicknessMM": null,
+      "thermalConductivityWmK": null,
+      "gwpA1A3PerFunctionalUnit": null
+    },
+    {
+      "materialId": "roof-steico-flex-260",
+      "name": "STEICOflex 036 — Wood Fibre Insulation Batt, 260mm (roof)",
+      "thicknessMM": 260,
+      "thermalConductivityWmK": 0.036,
+      "gwpA1A3PerFunctionalUnit": null
+    },
+    {
+      "materialId": "roof-kronoply-osb3-18",
+      "name": "Kronoply OSB/3, 18mm (roof deck)",
+      "thicknessMM": 18,
+      "thermalConductivityWmK": 0.13,
+      "gwpA1A3PerFunctionalUnit": null
+    },
+    {
+      "materialId": "roof-coverpro-epdm",
+      "name": "Cover Pro EPDM Membrane, 1.5mm",
+      "thicknessMM": 1.5,
+      "thermalConductivityWmK": null,
+      "gwpA1A3PerFunctionalUnit": null
+    },
+    {
+      "materialId": "roof-battens-30mm",
+      "name": "Battens, 30mm",
+      "thicknessMM": 30,
+      "thermalConductivityWmK": null,
+      "gwpA1A3PerFunctionalUnit": null
+    }
+  ]
+}

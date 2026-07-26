@@ -21,7 +21,13 @@ function AssemblyColumn({ summary, record }) {
     )
   }
 
-  const layers = record?.layers ?? []
+  // layerResults (not record.layers) — already carries the real, computed
+  // per-layer A1-A3 total (lcaAnalysis.js) alongside the raw declared
+  // rate, the same authoritative figures the A4 report's own assembly
+  // tables use. record.layers has only the raw rate, which is what made
+  // SectionPreview's GWP column show e.g. a 260mm layer's per-m3 rate
+  // instead of its real contribution in this assembly's actual area.
+  const layers = summary.layerResults ?? []
   // SectionPreview needs a real rTotal (calls .toFixed on it whenever
   // missingData is false) — getAssemblySummaries() only surfaces uValue,
   // not rTotal, so recompute both together here the same way

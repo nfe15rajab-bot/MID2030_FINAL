@@ -1,5 +1,33 @@
 import React, { forwardRef } from 'react'
 import { getLayerCompletenessTier } from '../lib/layerCompleteness.js'
+import { getAllMaterials } from '../lib/materialsCatalog.js'
+import { gwpPerM2ForLayer } from '../lib/gwpPerM2.js'
+
+function fmt(n, digits = 1) {
+  return n != null && Number.isFinite(n) ? n.toFixed(digits) : '—'
+}
+
+// The layer's real GWP A1-A3 contribution (rate × quantity for THIS
+// layer, in THIS assembly) — never the bare declared rate. Prefers
+// layer.a1a3 when the caller already ran the authoritative calc engine
+// (lcaAnalysis.js, via layerResults — e.g. A4ReportDraft.jsx's assembly
+// section) so this never disagrees with that; falls back to the same
+// gwpPerM2ForLayer scaling gwpTotalForLayers itself uses, for callers
+// that only have raw saved/live layers and pass areaM2 instead. Verified
+// directly: this table used to show the raw per-unit rate (e.g. -33.57
+// kg CO2e/m3 for a 260mm STEICOflex layer) under a header that reads
+// "GWP A1-A3" as if it were the real total (-462.6 kg CO2e for that same
+// layer in the real 53m2 wall) — silently wrong by however far the
+// layer's real thickness/area is from "1 of the declared unit".
+function layerGwpTotal(layer, allMaterials, areaM2) {
+  if (layer.a1a3 != null) return layer.a1a3
+  const material = allMaterials.find((m) => m.id === layer.materialId)
+  const perM2 = gwpPerM2ForLayer(layer, allMaterials)
+  if (perM2 == null) return null
+  if (material?.functionalUnit === 'unit') return perM2
+  const area = areaM2 != null && areaM2 !== '' && Number.isFinite(Number(areaM2)) ? Number(areaM2) : 1
+  return perM2 * area
+}
 
 function formatDate(iso) {
   if (!iso) return '—'
@@ -37,20 +65,24 @@ const SECTION_ORIENTATION = {
 // sectionStorage's roof record (see LayerBuilder.jsx's pitchDeg state).
 const DEFAULT_PITCH_DEG = 20
 
+// Just the layer's own number (matching the "#" column in the table
+// below) rather than thickness+full material name — verified directly
+// that cramming both into a narrow proportional-width band (e.g. an 8mm
+// batten next to a 260mm insulation layer in the same stack) produced
+// severe text collision/truncation, illegible in both the on-screen
+// preview and every exported PDF/PNG. The full name+thickness is still
+// available on hover (title) and, unabridged, in the table underneath.
 function BarsStack({ className, style, layers, totalThickness }) {
   return (
     <div className={className} style={style}>
-      {layers.map((layer) => (
+      {layers.map((layer, i) => (
         <div
           key={layer.instanceId}
           className={`section-sheet-bar section-sheet-bar--${getLayerCompletenessTier(layer)}`}
           style={{ flexBasis: `${((layer.thicknessMM || 0) / totalThickness) * 100}%` }}
-          title={layer.name}
+          title={`${i + 1}. ${layer.name} (${layer.thicknessMM != null ? `${layer.thicknessMM}mm` : 'thickness unknown'})`}
         >
-          <span className="section-sheet-bar-thickness">
-            {layer.thicknessMM != null ? `${layer.thicknessMM}mm` : '?'}
-          </span>
-          <span className="section-sheet-bar-name">{layer.name}</span>
+          <span className="section-sheet-bar-number">{i + 1}</span>
         </div>
       ))}
     </div>
@@ -69,10 +101,11 @@ function BarsStack({ className, style, layers, totalThickness }) {
  * layer data rather than cutting the .glb.
  */
 const SectionPreview = forwardRef(function SectionPreview(
-  { section, owner, savedAt, layers, uValue, rTotal, missingData, gwpTotal, gwpKnownCount, pitchDeg },
+  { section, owner, savedAt, layers, uValue, rTotal, missingData, gwpTotal, gwpKnownCount, pitchDeg, areaM2 },
   ref
 ) {
   const orientation = SECTION_ORIENTATION[section?.toLowerCase()] ?? SECTION_ORIENTATION.wall
+  const allMaterials = getAllMaterials()
   const totalThickness = layers.reduce((sum, l) => sum + (l.thicknessMM || 0), 0) || 1
   const barsClassName = `section-sheet-bars section-sheet-bars--${orientation.row ? 'row' : 'column'}`
   const barsStyle = orientation.pitched
@@ -123,6 +156,7 @@ const SectionPreview = forwardRef(function SectionPreview(
             <th>Material</th>
             <th>Thickness (mm)</th>
             <th>λ (W/mK)</th>
+            <th>GWP unit value</th>
             <th>GWP A1-A3</th>
           </tr>
         </thead>
@@ -134,11 +168,12 @@ const SectionPreview = forwardRef(function SectionPreview(
               <td>{layer.thicknessMM}</td>
               <td>{layer.thermalConductivityWmK ?? '—'}</td>
               <td>{layer.gwpA1A3PerFunctionalUnit ?? '—'}</td>
+              <td>{fmt(layerGwpTotal(layer, allMaterials, areaM2))}</td>
             </tr>
           ))}
           {layers.length === 0 && (
             <tr>
-              <td colSpan={5} className="empty-state">No layers yet</td>
+              <td colSpan={6} className="empty-state">No layers yet</td>
             </tr>
           )}
         </tbody>

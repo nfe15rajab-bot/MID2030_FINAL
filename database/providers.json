@@ -36,7 +36,8 @@
     "id": "provider-carlisle-eisenach",
     "materialIds": [
       "door-epdm-water-insulation",
-      "window-epdm-water-insulation"
+      "window-epdm-water-insulation",
+      "skylight-epdm-sealing-strip"
     ],
     "name": "CARLISLE Construction Materials (RESITRIX)",
     "address": "Eisenach, Germany",
@@ -102,13 +103,25 @@
     "id": "provider-fakro-nowysacz",
     "materialIds": ["skylight-fakro-fx-g31"],
     "name": "Fakro",
-    "address": "Nowy Sącz, Poland",
-    "website": null,
-    "lat": 49.6167,
-    "lng": 20.7167,
+    "address": "Węgierska 144a, 33-300 Nowy Sącz, Poland",
+    "website": "https://www.fakro.com",
+    "lat": 49.5944115,
+    "lng": 20.6787668,
     "distanceToDetmoldKm": null,
     "distanceToSiteKm": null,
-    "geocodedAt": "approximate — Nowy Sącz city-center placeholder from the midterm deck, re-geocode exact address with Nominatim for final figures"
+    "geocodedAt": "2026-07-26 — replaced the city-center placeholder: live web search (Dun & Bradstreet, Panjiva shipping records) confirmed the exact factory street address, Nominatim exact building-level match"
+  },
+  {
+    "id": "provider-zinco-nuertingen",
+    "materialIds": ["skylight-zinco-floradrain", "skylight-zinco-ssm45-fleece", "skylight-zinco-root-barrier"],
+    "name": "ZinCo GmbH",
+    "address": "Lise-Meitner-Straße 2, 72622 Nürtingen, Germany",
+    "website": "https://zinco-greenroof.com",
+    "lat": 48.6448457,
+    "lng": 9.3295683,
+    "distanceToDetmoldKm": null,
+    "distanceToSiteKm": null,
+    "geocodedAt": "2026-07-26 — live web search + Nominatim exact building-level match on the company's own HQ address (named 'ZinCo GmbH' in OSM). Real EPD for Floradrain FD 25-E confirmed: EPD-ZIC-20200082-CCA1-EN, IBU (Institut Bauen und Umwelt), issued 2020-07-31, stated validity to 2025-07-30 — i.e. past its stated validity window as of this project's 2026 timeline; ZinCo's site states its EPD coverage was re-verified/expanded via EPD Norway in 2025 (now covering 'almost its entire product range') but the renewed registration number wasn't published on the pages this search reached. SSM 45 fleece and the root-resistant membrane: ZinCo confirms EPD coverage exists under that same 2025 program but no product-specific registration number/date was found for either — flagged, not fabricated; recommend the team email info@zinco-greenroof.com for the exact current declarations before citing a number in the final report."
   },
   {
     "id": "provider-bauhaus-bielefeld",
@@ -193,7 +206,7 @@
   },
   {
     "id": "provider-kronoply-heiligengrabe",
-    "materialIds": ["wall-kronoply-osb4-18", "roof-kronoply-osb4-18", "floor-swisskrono-osb3-22mm"],
+    "materialIds": ["wall-kronoply-osb4-18", "roof-kronoply-osb4-18", "floor-swisskrono-osb3-22mm", "window-kronoply-osb-18mm"],
     "name": "Kronoply GmbH",
     "address": "Wittstocker Chaussee 1, 16909 Heiligengrabe, Germany",
     "website": "https://www.kronoply.com",
@@ -229,7 +242,7 @@
   },
   {
     "id": "provider-proclima-schwetzingen",
-    "materialIds": ["wall-proclima-intello-plus"],
+    "materialIds": ["wall-proclima-intello-plus", "skylight-proclima-intello-plus"],
     "name": "pro clima — MOLL bauökologische Produkte GmbH",
     "address": "Rheintalstraße 35-43, 68723 Schwetzingen, Germany",
     "website": "https://www.proclima.com",

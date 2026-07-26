@@ -45,6 +45,7 @@ function LiveSectionPreview({ section, layers, pitchDeg, owner }) {
       gwpTotal={gwpTotal}
       gwpKnownCount={gwpKnownRows.length}
       pitchDeg={pitchDeg}
+      areaM2={geometry?.surfaceAreaM2}
     />
   )
 }

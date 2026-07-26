@@ -91,6 +91,49 @@ function AssemblyTooltip({ active, payload }) {
   )
 }
 
+// Same per-assembly bars (one per in-scope assembly, colored green/red
+// against the median of whichever assemblies actually have this phase
+// computed, grey for "no data") for any single phase — A1-A3/A4/B4 all
+// share this exact shape, so one component renders all three instead of
+// three near-identical copies of the same chart JSX.
+function buildAssemblyBars(bySection, sections, getValue) {
+  const totals = sections.map((key) => {
+    const r = bySection[key]
+    return { assembly: r.label, realValue: r.hasData ? getValue(r) : null, key }
+  })
+  const known = totals.filter((t) => t.realValue != null).map((t) => t.realValue)
+  const med = median(known)
+  return totals.map((t) => ({
+    ...t,
+    value: toBarValue(t.realValue),
+    label: t.realValue != null ? t.realValue.toFixed(0) : '—',
+    favorable: t.realValue == null || med == null ? null : t.realValue < med ? true : t.realValue > med ? false : null,
+  }))
+}
+
+function AssemblyPhaseChart({ title, caveat, data }) {
+  return (
+    <div className="lca-summary-chart-block">
+      <h3>{title}</h3>
+      <ResponsiveContainer width="100%" height={220}>
+        <BarChart data={data} margin={{ top: 20, right: 20, left: 0, bottom: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" vertical={false} />
+          <XAxis dataKey="assembly" tick={{ fontSize: 12 }} />
+          <YAxis tick={{ fontSize: 12 }} label={{ value: 'kg CO₂e', angle: -90, position: 'insideLeft', fontSize: 11 }} />
+          <Tooltip content={<AssemblyTooltip />} />
+          <Bar dataKey="value" radius={[4, 4, 0, 0]} isAnimationActive={false}>
+            {data.map((d, i) => (
+              <Cell key={i} fill={d.realValue == null ? '#eee' : d.favorable === true ? 'var(--status-complete)' : d.favorable === false ? 'var(--status-error)' : 'var(--accent)'} />
+            ))}
+            <LabelList dataKey="label" position="top" fontSize={11} />
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+      {caveat && <p className="lca-summary-caveat">{caveat}</p>}
+    </div>
+  )
+}
+
 export default function LcaSummaryTab() {
   const { bySection, pooled } = usePooledLcaLayers()
   const [selectedInstanceId, setSelectedInstanceId] = useState(pooled[0]?.instanceId ?? null)
@@ -211,20 +254,33 @@ export default function LcaSummaryTab() {
     ]
   }, [selected, b6Result])
 
-  const assemblyData = useMemo(() => {
-    const totals = IN_SCOPE_SECTIONS.map((key) => {
-      const r = bySection[key]
-      return { assembly: r.label, realValue: r.hasData ? r.partialTotalKg : null, key }
-    })
-    const known = totals.filter((t) => t.realValue != null).map((t) => t.realValue)
-    const med = median(known)
-    return totals.map((t) => ({
-      ...t,
-      value: toBarValue(t.realValue),
-      label: t.realValue != null ? t.realValue.toFixed(0) : '—',
-      favorable: t.realValue == null || med == null ? null : t.realValue < med ? true : t.realValue > med ? false : null,
-    }))
-  }, [bySection])
+  const assemblyData = useMemo(
+    () => buildAssemblyBars(bySection, IN_SCOPE_SECTIONS, (r) => r.partialTotalKg),
+    [bySection]
+  )
+  // Same six-assembly bars, one phase at a time — A1-A3 and A4 split back
+  // out of the combined total above, plus B4 (only counted once every
+  // layer in that assembly has a service life, same rule
+  // analyzeLcaAssembly's own b4Total uses). B6 isn't per-assembly (it's a
+  // single whole-building figure by definition — calculateB6()'s own doc
+  // comment), so it gets a one-bar chart in the same visual language
+  // rather than being split arbitrarily across the six.
+  const a1a3AssemblyData = useMemo(
+    () => buildAssemblyBars(bySection, IN_SCOPE_SECTIONS, (r) => r.a1a3Total),
+    [bySection]
+  )
+  const a4AssemblyData = useMemo(
+    () => buildAssemblyBars(bySection, IN_SCOPE_SECTIONS, (r) => r.a4Total),
+    [bySection]
+  )
+  const b4AssemblyData = useMemo(
+    () => buildAssemblyBars(bySection, IN_SCOPE_SECTIONS, (r) => r.b4Total),
+    [bySection]
+  )
+  const b6ChartData = useMemo(() => {
+    const realValue = b6Result.b6
+    return [{ assembly: 'Whole building', realValue, value: toBarValue(realValue), label: realValue != null ? realValue.toFixed(0) : '—', favorable: null }]
+  }, [b6Result])
 
   const selectedAssemblyResult = selected ? bySection[selected.section] : null
 
@@ -315,26 +371,32 @@ export default function LcaSummaryTab() {
             </div>
           )}
 
-          <div className="lca-summary-chart-block">
-            <h3>Total GWP by assembly (A1-A3 + A4, excludes B4/C&D)</h3>
-            <ResponsiveContainer width="100%" height={220}>
-              <BarChart data={assemblyData} margin={{ top: 20, right: 20, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="assembly" tick={{ fontSize: 12 }} />
-                <YAxis tick={{ fontSize: 12 }} label={{ value: 'kg CO₂e', angle: -90, position: 'insideLeft', fontSize: 11 }} />
-                <Tooltip content={<AssemblyTooltip />} />
-                <Bar dataKey="value" radius={[4, 4, 0, 0]} isAnimationActive={false}>
-                  {assemblyData.map((d, i) => (
-                    <Cell key={i} fill={d.realValue == null ? '#eee' : d.favorable === true ? 'var(--status-complete)' : d.favorable === false ? 'var(--status-error)' : 'var(--accent)'} />
-                  ))}
-                  <LabelList dataKey="label" position="top" fontSize={11} />
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-            <p className="lca-summary-caveat">
-              Green = below the median of the three assemblies (favorable), red = above (unfavorable)
-              — relative to each other, not an absolute target.
-            </p>
+          <AssemblyPhaseChart
+            title="Total GWP by assembly (A1-A3 + A4, excludes B4/C&D)"
+            data={assemblyData}
+            caveat="Green = below the median of the assessed assemblies (favorable), red = above (unfavorable) — relative to each other, not an absolute target."
+          />
+
+          <h3 className="lca-summary-phase-group-heading">Individual phases, by assembly</h3>
+          <div className="lca-summary-phase-grid">
+            <AssemblyPhaseChart title="A1-A3 (product stage) by assembly" data={a1a3AssemblyData} />
+            <AssemblyPhaseChart
+              title="A4 (transport) by assembly"
+              data={a4AssemblyData}
+              caveat="Routed manufacturer → Detmold hub → Haarlem (DIN EN ISO 14083) wherever a layer's provider distance is known."
+            />
+            <AssemblyPhaseChart
+              title="B4 (replacement) by assembly"
+              data={b4AssemblyData}
+              caveat="Only counted once every layer in that assembly has a researched service life — grey means at least one is still missing, not zero."
+            />
+            <AssemblyPhaseChart
+              title="B6 (operational energy) — whole building"
+              data={b6ChartData}
+              caveat={b6Result.b6 != null
+                ? 'A single whole-building figure by definition (heating/cooling demand isn\'t attributable to one assembly) — not split across the six.'
+                : `Not yet computable — missing ${b6Result.missing?.join(', ')} (see Operational Energy settings above).`}
+            />
           </div>
 
           <LcaConclusionsPanel />

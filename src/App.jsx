@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import ModelViewer from './components/ModelViewer.jsx'
 import ConfiguratorPanel from './components/ConfiguratorPanel.jsx'
 import SectionConfigurator from './components/SectionConfigurator.jsx'
@@ -13,6 +13,7 @@ import DeliverablesTab from './components/DeliverablesTab.jsx'
 import IdentityPanel from './components/IdentityPanel.jsx'
 import { CurrentUserProvider, useCurrentUser } from './context/CurrentUserContext.jsx'
 import { hotspots } from './data/hotspots.js'
+import { warmRouteCache } from './lib/routeAutoFetch.js'
 import 'leaflet/dist/leaflet.css'
 import './styles.css'
 
@@ -38,6 +39,28 @@ function AppShell() {
   // tabs always used to.
   const [sectionConfiguratorDirty, setSectionConfiguratorDirty] = useState(false)
   const { currentUser, group, isAdmin } = useCurrentUser()
+
+  // A4 routed by default: fetches+caches the shared Detmold->Haarlem leg
+  // and every provider's own real route once, in the background, so
+  // nobody has to find and click "Get real route" per provider before A4
+  // reflects real road distances instead of straight-line/assumption
+  // fallbacks — see routeAutoFetch.js. routeCacheVersion forces a remount
+  // (via the `key` props below) of whichever tabs display route-derived
+  // numbers, so an already-open tab updates live instead of only on the
+  // next tab switch/reload. Debounced (not bumped on every one of the 20+
+  // individual fetches) — this can land many routes in quick succession,
+  // and remounting an open tab on every single one would flicker/reset its
+  // scroll position/local UI state repeatedly; one remount ~1s after the
+  // last landing is enough to feel "live" without that.
+  const [routeCacheVersion, setRouteCacheVersion] = useState(0)
+  useEffect(() => {
+    let debounceTimer = null
+    warmRouteCache(() => {
+      clearTimeout(debounceTimer)
+      debounceTimer = setTimeout(() => setRouteCacheVersion((v) => v + 1), 1000)
+    })
+    return () => clearTimeout(debounceTimer)
+  }, [])
 
   // Stable reference on purpose — this sits in ModelViewer's own useEffect
   // dependency array, so a new function identity here would tear down and
@@ -140,19 +163,19 @@ function AppShell() {
         />
       )}
 
-      {activeTab === 'Assembly Analysis Preview' && <AssemblyAnalysisTab />}
+      {activeTab === 'Assembly Analysis Preview' && <AssemblyAnalysisTab key={routeCacheVersion} />}
 
-      {activeTab === 'LCA and EPD' && <LcaEpdTab />}
+      {activeTab === 'LCA and EPD' && <LcaEpdTab key={routeCacheVersion} />}
 
-      {activeTab === 'Materials and Providers' && <ProvidersTab />}
+      {activeTab === 'Materials and Providers' && <ProvidersTab key={routeCacheVersion} />}
 
       {activeTab === 'Team Summary' && <TeamSummaryTab />}
 
-      {activeTab === 'LCA Summary' && <LcaSummaryTab />}
+      {activeTab === 'LCA Summary' && <LcaSummaryTab key={routeCacheVersion} />}
 
-      {activeTab === 'Spreadsheet' && <SpreadsheetTab />}
+      {activeTab === 'Spreadsheet' && <SpreadsheetTab key={routeCacheVersion} />}
 
-      {activeTab === 'Deliverables' && <DeliverablesTab />}
+      {activeTab === 'Deliverables' && <DeliverablesTab key={routeCacheVersion} />}
 
       <ConfiguratorPanel
         hotspot={activeHotspot}

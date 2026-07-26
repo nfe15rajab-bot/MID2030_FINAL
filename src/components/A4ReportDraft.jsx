@@ -1,11 +1,6 @@
-import React, { forwardRef, useRef, useState } from 'react'
+import React, { forwardRef } from 'react'
 import BarChart from './BarChart.jsx'
 import SectionPreview from './SectionPreview.jsx'
-import FicheTechnique from './FicheTechnique.jsx'
-import { findProvidersForMaterial } from '../lib/geo.js'
-import providers from '../../database/providers.json'
-import referenceLocations from '../../database/reference-locations.json'
-import { downloadElementAsPng, copyElementPngToClipboard, exportAllAnnexVisualsAsZip } from '../lib/pngExport.js'
 import { loadSection } from '../lib/sectionStorage.js'
 import { calculateUValue } from '../lib/uvalue.js'
 import {
@@ -15,6 +10,7 @@ import {
   getFicheDeliverables
 } from '../lib/deliverablesData.js'
 import { classifyAssemblySustainability } from '../lib/sustainabilityRubric.js'
+import { calculateB6 } from '../lib/lcaAnalysis.js'
 import { loadFicheDetail } from '../lib/ficheStorage.js'
 import { getAllMaterials } from '../lib/materialsCatalog.js'
 import { buildLayerCalculationSteps, buildUValueAssemblyStep } from '../lib/calculationNarrative.js'
@@ -269,120 +265,72 @@ function AssemblySection({ summary }) {
   )
 }
 
-function AnnexSingleFicheCard({ idx, entry, material, detail, closestToSite }) {
-  const ficheRef = useRef(null)
-  const [saving, setSaving] = useState(false)
-  const [copying, setCopying] = useState(false)
-
-  async function handleSavePng() {
-    if (!ficheRef.current) return
-    setSaving(true)
-    try {
-      const name = material.name || entry.label
-      const filename = `Fiche_${idx + 1}_${name.toLowerCase().replace(/[^a-z0-9]+/g, '_')}.png`
-      await downloadElementAsPng(ficheRef.current, filename, { scale: 3 })
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  async function handleCopyPng() {
-    if (!ficheRef.current) return
-    setCopying(true)
-    try {
-      await copyElementPngToClipboard(ficheRef.current, { scale: 3 })
-    } catch (err) {
-      console.warn('Clipboard copy failed:', err)
-    } finally {
-      setCopying(false)
-    }
-  }
-
-  return (
-    <div className="a4-fiche-visual-card" style={{ border: '1px solid #e2e8f0', borderRadius: '10px', padding: '16px', background: '#ffffff', marginBottom: '24px', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', borderBottom: '1px solid #f1f5f9', paddingBottom: '8px' }}>
-        <div>
-          <h3 style={{ margin: 0, fontSize: '1.1rem', color: '#0f172a', fontWeight: 600 }}>
-            Fiche #{idx + 1}: {material.name || entry.label}
-          </h3>
-          <span style={{ fontSize: '0.8rem', color: '#64748b' }}>
-            Category: {material.discipline || material.category || 'Building Layer'}
-          </span>
-        </div>
-        <div style={{ display: 'flex', gap: '8px' }}>
-          <button type="button" onClick={handleSavePng} disabled={saving} style={{ padding: '6px 12px', fontSize: '0.82rem', cursor: 'pointer', background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '6px', fontWeight: 500 }}>
-            {saving ? 'Saving PNG…' : '📸 Save PNG'}
-          </button>
-          <button type="button" onClick={handleCopyPng} disabled={copying} style={{ padding: '6px 12px', fontSize: '0.82rem', cursor: 'pointer', background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '6px', fontWeight: 500 }}>
-            {copying ? 'Copying…' : '📋 Copy PNG'}
-          </button>
-        </div>
-      </div>
-      <div ref={ficheRef} style={{ background: '#ffffff', padding: '8px', overflow: 'visible' }}>
-        <FicheTechnique
-          material={material}
-          closestToSite={closestToSite}
-          detail={detail}
-        />
-      </div>
-    </div>
-  )
-}
-
+// Compact table, not one illustrated card per material (photo, provider
+// map, borders/shadows) — this annex used to render all of them at once,
+// both here and in the off-screen export copy, and multiPagePdfExport.js
+// re-clones/re-lays-out the ENTIRE report element once per page-chunk (see
+// its own header comment), so every one of those heavy cards got fully
+// re-rendered N times over on a large catalog. Verified directly as the
+// actual cause of the PDF export becoming extremely slow / never finishing
+// once the catalog grew — a lean table is cheap to clone no matter how
+// many times that happens. Nothing is lost: the full illustrated fiche
+// (photo, live provider map, editable research fields) per material is
+// still one click away in Deliverables → Fiche sheets, including its own
+// PNG/ZIP export — this table just stops duplicating that here.
 function AnnexAFiches() {
   const fiches = getFicheDeliverables()
   const allMats = getAllMaterials()
   const matById = Object.fromEntries(allMats.map((m) => [m.id, m]))
-  const containerRef = useRef(null)
-  const [downloading, setDownloading] = useState(false)
 
   if (fiches.length === 0) {
     return <p className="a4-report-empty">No material fiches cataloged yet.</p>
   }
 
-  async function handleDownloadAllZip() {
-    setDownloading(true)
-    try {
-      await exportAllAnnexVisualsAsZip(containerRef, [], 'MID2030_Material_Fiches_PNG.zip')
-    } finally {
-      setDownloading(false)
-    }
-  }
-
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc', padding: '12px 16px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-        <p className="a4-report-note" style={{ margin: 0, fontSize: '0.88rem' }}>
-          Visual Fiches Techniques (fiches de données environnementales et matérielles) for all {fiches.length} building layers in Model 1. Convert any fiche to a high-res PNG or batch export as ZIP.
-        </p>
-        <button
-          type="button"
-          style={{ padding: '8px 16px', background: 'var(--accent, #2563eb)', color: '#ffffff', fontWeight: 600, border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '0.85rem' }}
-          onClick={handleDownloadAllZip}
-          disabled={downloading}
-        >
-          {downloading ? 'Packing PNGs…' : '📦 Batch Export All Fiches as ZIP'}
-        </button>
+    <>
+      <p className="a4-report-note">
+        Compact index of all {fiches.length} materials used across the six assemblies — physical properties,
+        GWP, service life, end-of-life, and provider/logistics. For the full illustrated fiche (photo,
+        provider map, editable research fields) per material, or to export them as PNGs individually or as a
+        batch ZIP, see Deliverables → Fiche sheets.
+      </p>
+      <div className="a4-report-table-wrapper">
+        <table className="a4-report-table a4-matrix-table">
+          <thead>
+            <tr>
+              <th>Material</th>
+              <th>Density ρ</th>
+              <th>λ (W/mK)</th>
+              <th>GWP A1-A3</th>
+              <th>Service life</th>
+              <th>End-of-life</th>
+              <th>Provider</th>
+              <th>Distance</th>
+            </tr>
+          </thead>
+          <tbody>
+            {fiches.map((entry, idx) => {
+              const mat = matById[entry.key] || entry.material
+              const detail = loadFicheDetail(entry.key) || {}
+              const providerName = detail.providerName || mat.manufacturer || '—'
+              const distanceKm = detail.providerDistanceToDetmoldKm || detail.providerDistanceKm || mat.distanceDetmoldToSiteKm
+              return (
+                <tr key={entry.key}>
+                  <td>Fiche #{idx + 1}: {mat.name || entry.label}</td>
+                  <td>{mat.densityKgM3 != null ? `${mat.densityKgM3} kg/m³` : '—'}</td>
+                  <td>{mat.thermalConductivityWmK != null ? fmt(mat.thermalConductivityWmK, 3) : '—'}</td>
+                  <td>{mat.gwpA1A3PerFunctionalUnit != null ? `${fmt(mat.gwpA1A3PerFunctionalUnit, 2)} / ${mat.functionalUnit ?? 'unit'}` : 'not yet sourced'}</td>
+                  <td>{mat.serviceLifeYears != null ? `${mat.serviceLifeYears} yrs` : '50 yrs (assumed)'}</td>
+                  <td>{detail.endOfLifeScenario || mat.endOfLifeScenario || 'Unresearched'}</td>
+                  <td>{providerName}</td>
+                  <td>{distanceKm != null ? `${Math.round(Number(distanceKm))} km` : '—'}</td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
       </div>
-
-      <div ref={containerRef} className="a4-annex-fiches-visual-list">
-        {fiches.map((entry, idx) => {
-          const mat = matById[entry.key] || entry.material
-          const detail = loadFicheDetail(entry.key) || {}
-          const { closestToSite } = findProvidersForMaterial(mat.id, providers, referenceLocations)
-          return (
-            <AnnexSingleFicheCard
-              key={entry.key}
-              idx={idx}
-              entry={entry}
-              material={mat}
-              detail={detail}
-              closestToSite={closestToSite}
-            />
-          )
-        })}
-      </div>
-    </div>
+    </>
   )
 }
 
@@ -467,6 +415,31 @@ const A4ReportDraft = forwardRef(function A4ReportDraft({ summaries, references 
     { label: 'Module D (Recycling Credit)', value: Math.abs(globalLca.moduleDTotal || 0), formattedValue: `${fmt(globalLca.moduleDTotal, 1)} kg CO₂e` }
   ]
 
+  // Phase B (use stage) — B4 (replacement) is per-assembly, same "only if
+  // every layer has one" rule getGlobalLcaSummary()'s own b4Total uses
+  // (never a partial sum presented as if it were complete); B6
+  // (operational energy) is a single whole-building figure by definition
+  // (calculateB6()'s own doc comment), not attributable to one assembly,
+  // so it's plotted as its own bar alongside the six rather than forced
+  // into a per-assembly split that wouldn't mean anything.
+  function assemblyB4Total(summary) {
+    const results = summary.layerResults ?? []
+    if (results.length === 0 || !results.every((l) => l.b4 != null)) return null
+    return results.reduce((sum, l) => sum + l.b4, 0)
+  }
+  const b6Result = calculateB6()
+  const bPhaseBars = [
+    ...orderedAssemblies.map((s) => {
+      const b4 = assemblyB4Total(s)
+      return { label: `${s.label} (B4)`, value: b4 != null ? Math.abs(b4) : null, formattedValue: b4 != null ? `${fmt(b4, 1)} kg CO₂e` : null }
+    }),
+    {
+      label: 'Whole building (B6)',
+      value: b6Result.b6 != null ? Math.abs(b6Result.b6) : null,
+      formattedValue: b6Result.b6 != null ? `${fmt(b6Result.b6, 1)} kg CO₂e` : null,
+    },
+  ]
+
   const providerRadiusBars = [
     { label: 'Radius ≤ 500 km', value: providerStats.within500, formattedValue: `${providerStats.within500} suppliers` },
     { label: 'Radius ≤ 1000 km', value: providerStats.within1000, formattedValue: `${providerStats.within1000} suppliers` },
@@ -538,8 +511,8 @@ const A4ReportDraft = forwardRef(function A4ReportDraft({ summaries, references 
               <tr>
                 <td><strong>Material Research &amp; EPD Sourcing</strong></td>
                 <td>Independent research, Ökobaudat, manufacturer EPDs</td>
-                <td>Integrated Ökobaudat soda4LCA API, cataloged 20+ materials with density ρ, λ, c, μ, and EPD UUIDs. Created Paludi insulation board EPD.</td>
-                <td><span className="a4-badge a4-badge--high">100% Complete</span></td>
+                <td>Integrated Ökobaudat soda4LCA API, cataloged 20+ materials with density ρ, λ, c, μ, and EPD UUIDs. Paludi insulation board EPD (brief 5.2's named deliverable) not yet started anywhere in this app.</td>
+                <td><span className="a4-badge a4-badge--med">Partially Complete</span></td>
               </tr>
               <tr>
                 <td><strong>Building Physics &amp; Thermal Performance</strong></td>
@@ -861,6 +834,22 @@ const A4ReportDraft = forwardRef(function A4ReportDraft({ summaries, references 
         <div className="a4-report-chart-single">
           <BarChart title="Whole-Building Lifecycle Impact Breakdown by Stage" unit="kg CO₂e" bars={globalStageBars} />
         </div>
+
+        <h4>Phase B (Use Stage) — B4 &amp; B6 by Assembly</h4>
+        <p className="a4-report-note">
+          B4 (component replacement) is assembly-specific — each bar is that assembly's own total, only shown
+          once every one of its layers has a researched service life. B6 (operational energy) is a single
+          whole-building figure by definition (heating/cooling demand isn't attributable to one assembly), so
+          it's plotted as its own bar rather than split arbitrarily across the six.
+        </p>
+        <div className="a4-report-chart-single">
+          <BarChart title="Phase B — Replacement (B4) by Assembly &amp; Whole-Building Operational Energy (B6)" unit="kg CO₂e" bars={bPhaseBars} />
+        </div>
+        {b6Result.b6 == null && (
+          <p className="a4-report-note">
+            B6 not yet computable — missing {b6Result.missing.join(', ')} (LCA Summary → Operational Energy settings).
+          </p>
+        )}
 
         <h4>Assessment by lifecycle phase</h4>
         <p><strong>Phase A</strong> (product + construction). A1-A3 whole-building total: {globalLca.a1a3Total != null ? `${fmt(globalLca.a1a3Total, 1)} kg CO₂e` : 'not yet computable'}. A4 (transport) total: {globalLca.a4Total != null ? `${fmt(globalLca.a4Total, 1)} kg CO₂e` : 'not yet computable'} — routed via the Detmold hub with real driving distances for every wall and roof provider fetched this round.</p>

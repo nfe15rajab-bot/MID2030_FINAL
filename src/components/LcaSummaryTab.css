@@ -36,6 +36,20 @@
   border-radius: 8px;
   padding: 16px 20px;
 }
+
+.lca-summary-phase-group-heading {
+  margin: 4px 0 -8px;
+  font-size: 0.85rem;
+  color: #777;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.lca-summary-phase-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 16px;
+}
+.lca-summary-phase-grid .lca-summary-chart-block { margin: 0; }
 .lca-summary-chart-block h3 { margin: 0 0 12px; font-size: 0.95rem; }
 .lca-summary-chart-block h4 { margin: 16px 0 8px; font-size: 0.88rem; color: #555; }
 .lca-summary-caveat { color: #999; font-size: 0.76rem; font-style: italic; margin: 8px 0 0; }

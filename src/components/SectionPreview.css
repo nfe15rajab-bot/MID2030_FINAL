@@ -118,12 +118,9 @@
 .section-sheet-bar--partial { background: var(--status-attention-bg); }
 .section-sheet-bar--none { background: var(--status-error-bg); }
 
-.section-sheet-bar-thickness { font-weight: 700; }
-.section-sheet-bar-name {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 100%;
+.section-sheet-bar-number {
+  font-weight: 700;
+  font-size: 0.9rem;
 }
 
 .section-sheet-table {

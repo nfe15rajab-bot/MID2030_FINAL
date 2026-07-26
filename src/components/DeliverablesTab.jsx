@@ -130,6 +130,7 @@ function SectionPdfButton({ assemblyKey, label }) {
           gwpTotal={gwpTotal}
           gwpKnownCount={gwpKnown.length}
           pitchDeg={record.pitchDeg}
+          areaM2={geometry?.surfaceAreaM2}
         />
       </div>
     </div>

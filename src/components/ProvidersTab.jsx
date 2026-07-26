@@ -319,6 +319,7 @@ export default function ProvidersTab() {
                   {...calculateUValue(selectedSectionRecord.layers, previewSection)}
                   gwpTotal={previewGwp?.total ?? 0}
                   gwpKnownCount={previewGwp?.known.length ?? 0}
+                  areaM2={previewGeometry?.surfaceAreaM2}
                 />
               )}
 

@@ -14,8 +14,8 @@
 // research by discipline, Assemblies (6, each with layer order + sd/U/GWP
 // + assumptions/references + its own LCA/EPD conclusion), Global LCA,
 // Global EPD (provider concentration), Conclusion, References.
-import { Document, Packer, Paragraph, TextRun, HeadingLevel, Table, TableRow, TableCell, WidthType, AlignmentType } from 'docx'
-import { getMaterialResearchByDiscipline, getGlobalLcaSummary, getGlobalProviderStats } from './deliverablesData.js'
+import { Document, Packer, Paragraph, TextRun, HeadingLevel, Table, TableRow, TableCell, WidthType, AlignmentType, ImageRun } from 'docx'
+import { getMaterialResearchByDiscipline, getGlobalLcaSummary, getGlobalProviderStats, getFicheDeliverables } from './deliverablesData.js'
 import { classifyAssemblySustainability } from './sustainabilityRubric.js'
 import { loadFicheDetail } from './ficheStorage.js'
 import { getAllMaterials } from './materialsCatalog.js'
@@ -66,6 +66,42 @@ function cell(text, { header = false, width = null } = {}) {
 function table(headers, rows) {
   const headerRow = new TableRow({ children: headers.map((h) => cell(h, { header: true })) })
   return new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: [headerRow, ...rows] })
+}
+
+// Label/value spec-sheet table (no header row) — used for one fiche's
+// full field list, where every row is a different field rather than a
+// repeating record.
+function keyValueTable(rows) {
+  return new Table({
+    width: { size: 100, type: WidthType.PERCENTAGE },
+    rows: rows.map(([label, value]) => new TableRow({
+      children: [cell(label, { header: true, width: 25 }), cell(value, { width: 75 })],
+    })),
+  })
+}
+
+// Decodes a fiche's uploaded photo (a data: URL, see ficheStorage.js) into
+// a real embedded docx image — never a screenshot of the fiche sheet.
+// Only the raster types docx's ImageRun actually supports; anything else
+// (e.g. webp) degrades to a text note rather than throwing and failing
+// the whole export over one photo.
+function ficheImagePreview(photoDataUrl) {
+  if (!photoDataUrl) return null
+  const match = /^data:image\/(png|jpe?g|gif|bmp);base64,(.+)$/i.exec(photoDataUrl)
+  if (!match) return note('Photo uploaded, but in a format this export can\'t embed (only PNG/JPEG/GIF/BMP) — see the fiche in-app for the original.')
+  try {
+    const mime = match[1].toLowerCase()
+    const type = mime === 'jpeg' ? 'jpg' : mime
+    const binary = atob(match[2])
+    const bytes = new Uint8Array(binary.length)
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
+    return new Paragraph({
+      children: [new ImageRun({ data: bytes, type, transformation: { width: 220, height: 165 } })],
+      spacing: { after: 120 },
+    })
+  } catch {
+    return note('Photo uploaded, but could not be embedded in this export — see the fiche in-app for the original.')
+  }
 }
 
 // ---------------------------------------------------------------------
@@ -163,23 +199,99 @@ function materialResearchSection() {
     ),
   ]
 
+  // Density/λ come from the material catalog record, not the fiche detail
+  // (they're intrinsic physical properties, not researched-by-hand fields)
+  // — same split A4ReportDraft.jsx's equivalent table already uses.
+  const matById = Object.fromEntries(getAllMaterials().map((m) => [m.id, m]))
+
   for (const group of groups) {
     children.push(subheading(group.discipline))
     children.push(table(
-      ['Material', 'German name', 'Specs', 'Norm', 'End-of-life scenario', 'Provider'],
-      group.rows.map((r) => new TableRow({
-        children: [
-          cell(r.name),
-          cell(r.germanName ?? '—'),
-          cell(r.specs ?? '—', { width: 28 }),
-          cell(r.norm ?? '—'),
-          cell(r.endOfLifeScenario ?? '—'),
-          cell(r.providerName ?? '(auto-matched — see Materials and Providers)', { width: 20 }),
-        ],
-      }))
+      ['Material', 'German name', 'Density ρ (kg/m³)', 'λ (W/mK)', 'Specs', 'Norm', 'End-of-life scenario', 'Provider'],
+      group.rows.map((r) => {
+        const mat = matById[r.key]
+        return new TableRow({
+          children: [
+            cell(r.name, { width: 14 }),
+            cell(r.germanName ?? '—', { width: 12 }),
+            cell(mat?.densityKgM3 != null ? String(Math.round(mat.densityKgM3)) : '—', { width: 10 }),
+            cell(mat?.thermalConductivityWmK != null ? fmt(mat.thermalConductivityWmK, 3) : '—', { width: 10 }),
+            cell(r.specs ?? '—', { width: 20 }),
+            cell(r.norm ?? '—', { width: 12 }),
+            cell(r.endOfLifeScenario ?? '—', { width: 12 }),
+            cell(r.providerName ?? '(auto-matched — see Materials and Providers)', { width: 10 }),
+          ],
+        })
+      })
     ))
     children.push(new Paragraph({ spacing: { after: 160 } }))
   }
+
+  return children
+}
+
+// ---------------------------------------------------------------------
+// Annex A — Material Fiche Technical Sheets. Mirrors A4ReportDraft.jsx's
+// AnnexAFiches section-for-section (one fiche per distinct material, same
+// pooling from getFicheDeliverables()) but as real docx content — a real
+// embedded photo (ImageRun, not a screenshot of the fiche card) plus a
+// real key/value Table per fiche — instead of that section's rendered
+// FicheTechnique/FicheMap component tree, which only makes sense captured
+// as a PNG for the PDF path. Same fiche record (ficheStorage.js) and
+// catalog material (materialsCatalog.js) either way, so this annex can
+// never show different content than the PDF's or the Fiche sheets tab's.
+// ---------------------------------------------------------------------
+function ficheAnnexSection() {
+  const entries = getFicheDeliverables()
+  if (entries.length === 0) {
+    return [heading('Annex A: Material Fiche Technical Sheets', HeadingLevel.HEADING_1), body('No material fiches cataloged yet.')]
+  }
+
+  const matById = Object.fromEntries(getAllMaterials().map((m) => [m.id, m]))
+
+  const children = [
+    heading('Annex A: Material Fiche Technical Sheets', HeadingLevel.HEADING_1),
+    body(
+      `One technical fiche per distinct material used across all six assemblies (${entries.length} total) — ` +
+      'physical properties, EPD-sourced GWP, service life, end-of-life scenario, circularity, and provider/' +
+      'logistics. Pulled from the same fiche records and material catalog the Deliverables → Fiche sheets tab ' +
+      'and this report\'s PDF annex use, so it can never disagree with either.'
+    ),
+  ]
+
+  entries.forEach((entry, idx) => {
+    const mat = matById[entry.key] || entry.material
+    const detail = loadFicheDetail(entry.key) || {}
+    const eolScenario = detail.endOfLifeScenario || mat.endOfLifeScenario || null
+    const providerName = detail.providerName || mat.manufacturer || null
+    const providerLocation = detail.providerLocation || mat.providerLocation || null
+    const distanceKm = detail.providerDistanceToDetmoldKm || detail.providerDistanceKm || mat.distanceDetmoldToSiteKm || null
+
+    children.push(subheading(`Fiche #${idx + 1}: ${mat.name || entry.label}`))
+    children.push(body(`Discipline: ${mat.discipline || mat.category || 'Building layer'} · Used in: ${entry.section}`))
+
+    const img = ficheImagePreview(detail.photoDataUrl)
+    children.push(img ?? note('No photo uploaded for this material.'))
+
+    children.push(keyValueTable([
+      ['German name', detail.germanName || '—'],
+      ['Specs', detail.specs || '—'],
+      ['Standard norm', detail.norm || mat.enNorm || '—'],
+      ['Density (ρ)', mat.densityKgM3 != null ? `${mat.densityKgM3} kg/m³` : '—'],
+      ['Thermal conductivity (λ)', mat.thermalConductivityWmK != null ? `${mat.thermalConductivityWmK} W/mK` : '—'],
+      ['GWP A1-A3', mat.gwpA1A3PerFunctionalUnit != null ? `${fmt(mat.gwpA1A3PerFunctionalUnit, 2)} kg CO₂e / ${mat.functionalUnit ?? 'unit'} (${mat.gwpConfidenceLabel ?? 'sourced'})` : 'not yet sourced'],
+      ['EPD / GWP source', mat.epdSource || mat.gwpSourceUrl || '—'],
+      ['Service life', mat.serviceLifeYears != null ? `${mat.serviceLifeYears} years` : '50 years (assumed default)'],
+      ['End-of-life scenario', eolScenario || 'Unresearched'],
+      ['End-of-life notes', detail.endOfLifeNotes || mat.eolAssumptionBasis || '—'],
+      ['Recyclability', detail.circularityRecyclabilityPercent ? `${detail.circularityRecyclabilityPercent}%` : '—'],
+      ['Deconstruction method', detail.circularityDeconstructionMethod || '—'],
+      ['Provider', providerName || '—'],
+      ['Provider location', providerLocation || '—'],
+      ['Distance (via Detmold hub)', distanceKm != null ? `${Math.round(Number(distanceKm))} km` : '—'],
+    ]))
+    children.push(new Paragraph({ spacing: { after: 220 } }))
+  })
 
   return children
 }
@@ -191,15 +303,16 @@ function layerOrderTable(summary) {
   const rows = summary.layerResults ?? []
   if (rows.length === 0) return body('No layers saved.')
   return table(
-    ['#', 'Material', 'Thickness (mm)', 'λ (W/mK)', 'GWP unit value', 'GWP A1-A3 (kg CO₂e)'],
+    ['#', 'Material', 'Thickness (mm)', 'λ (W/mK)', 'Density (kg/m³)', 'GWP unit value', 'GWP A1-A3 (kg CO₂e)'],
     rows.map((l, i) => new TableRow({
       children: [
         cell(String(i + 1), { width: 6 }),
-        cell(l.name, { width: 30 }),
-        cell(fmt(l.thicknessMM, 1)),
-        cell(l.thermalConductivityWmK != null ? fmt(l.thermalConductivityWmK, 3) : '—'),
-        cell(l.gwpA1A3PerFunctionalUnit != null ? fmt(l.gwpA1A3PerFunctionalUnit, 2) : '—'),
-        cell(l.a1a3 != null ? fmt(l.a1a3, 1) : '—'),
+        cell(l.name, { width: 26 }),
+        cell(fmt(l.thicknessMM, 1), { width: 14 }),
+        cell(l.thermalConductivityWmK != null ? fmt(l.thermalConductivityWmK, 3) : '—', { width: 14 }),
+        cell(l.densityKgM3 != null ? String(Math.round(l.densityKgM3)) : '—', { width: 14 }),
+        cell(l.gwpA1A3PerFunctionalUnit != null ? fmt(l.gwpA1A3PerFunctionalUnit, 2) : '—', { width: 13 }),
+        cell(l.a1a3 != null ? fmt(l.a1a3, 1) : '—', { width: 13 }),
       ],
     }))
   )
@@ -489,6 +602,8 @@ export async function exportA4Docx(summaries, references, filename = 'a4-report-
           spacing: { after: 160 },
         }))]
       : []),
+
+    ...ficheAnnexSection(),
   ]
 
   const doc = new Document({

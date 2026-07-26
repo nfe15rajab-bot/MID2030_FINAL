@@ -900,6 +900,7 @@ export default function LayerBuilder({ materials, elementType = 'wall', owner = 
         gwpTotal={gwpTotal}
         gwpKnownCount={gwpKnownLayers.length}
         pitchDeg={pitchDeg}
+        areaM2={geometry?.surfaceAreaM2}
       />
       <div className="export-button-row">
         <button type="button" className="export-pdf-button" onClick={handleExportPdf} disabled={exporting}>

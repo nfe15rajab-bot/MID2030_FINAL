@@ -82,3 +82,48 @@
   font-size: 0.75rem;
   pointer-events: none;
 }
+
+.layer-share-chart {
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px 16px;
+}
+.layer-share-body {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+.layer-share-empty { color: #888; font-size: 0.82rem; font-style: italic; margin: 4px 0 0; }
+
+.layer-share-legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+  min-width: 200px;
+}
+.layer-share-legend li {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 0.8rem;
+  cursor: default;
+  transition: opacity 0.1s ease;
+}
+.layer-share-legend-row--dim { opacity: 0.4; }
+.layer-share-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  flex-shrink: 0;
+  align-self: center;
+}
+.layer-share-legend-label { color: #333; flex: 1; }
+.layer-share-legend-value { color: #666; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+.layer-share-caveat { color: #888; font-size: 0.76rem; font-style: italic; margin: 10px 0 0; }

@@ -42,6 +42,16 @@ export default function BarChart({ title, unit, bars, exportable = false }) {
   const maxValue = knownValues.length > 0 ? Math.max(...knownValues) : 1
   const scale = (v) => (maxValue > 0 ? (v / maxValue) * (CHART_HEIGHT - 24) : 0)
 
+  // Selective direct labels (dataviz skill: "never a number on every
+  // point" — floods the chart and stops being read). A handful of bars
+  // (≤4, e.g. per-assembly rollups) is comfortable labeled in full; once
+  // a chart is showing a full layer stack (up to 10 for a wall), only the
+  // two extremes — biggest emitter, biggest carbon-store — get a direct
+  // label. Everything else still has its value one hover away.
+  const minValue = knownValues.length > 0 ? Math.min(...knownValues) : null
+  const labelAll = bars.length <= 4
+  const shouldLabel = (bar) => labelAll || bar.value === maxValue || bar.value === minValue
+
   const width = bars.length * (BAR_WIDTH + BAR_GAP) + BAR_GAP
   const totalHeight = CHART_HEIGHT + LABEL_HEIGHT
 
@@ -105,10 +115,14 @@ export default function BarChart({ title, unit, bars, exportable = false }) {
                 />
               )}
 
-              {/* direct label at the tip — sparing, one per bar since there are only 3-4 */}
-              <text x={x + BAR_WIDTH / 2} y={y - 6} textAnchor="middle" fontSize="10" fill="#555">
-                {isKnown ? bar.formattedValue : (bar.outOfScope ? 'n/a' : '—')}
-              </text>
+              {/* direct label at the tip — selective (see shouldLabel above); a
+                  missing/out-of-scope flag always shows since it's a status,
+                  not a number, and doesn't add to the clutter this guards against */}
+              {(shouldLabel(bar) || !isKnown) && (
+                <text x={x + BAR_WIDTH / 2} y={y - 6} textAnchor="middle" fontSize="10" fill="#555">
+                  {isKnown ? bar.formattedValue : (bar.outOfScope ? 'n/a' : '—')}
+                </text>
+              )}
 
               {/* category label below baseline — angled and right-anchored (reads
                   bottom-to-top toward its own bar) so labels no longer collide with

@@ -6,6 +6,7 @@ import { useCurrentUser } from '../context/CurrentUserContext.jsx'
 import LayerBuilder from './LayerBuilder.jsx'
 import UnitAssemblyBuilder from './UnitAssemblyBuilder.jsx'
 import BarChart from './BarChart.jsx'
+import LayerSharePieChart from './LayerSharePieChart.jsx'
 import AiFeedbackPanel from './AiFeedbackPanel.jsx'
 import LcaConclusionsPanel from './LcaConclusionsPanel.jsx'
 import './AssemblyAnalysisTab.css'
@@ -51,6 +52,18 @@ export default function AssemblyAnalysisTab() {
       value: perM2,
       formattedValue: perM2 != null ? perM2.toFixed(2) : null,
       tooltipNote: `${l.name} — GWP A1-A3 per 1m² (thickness-scaled)`, // full name, since the bar label itself may be truncated
+      key: l.instanceId ?? i,
+    }
+  })
+  // Same underlying gwpPerM2 numbers as gwpBars above — just full,
+  // untruncated names, since the pie's legend has room the bar chart's
+  // rotated labels don't.
+  const gwpShareSlices = liveLayers.map((l, i) => {
+    const perM2 = gwpPerM2.find((g) => g.instanceId === l.instanceId)?.perM2 ?? null
+    return {
+      label: l.name || 'Unnamed layer',
+      value: perM2,
+      formattedValue: perM2 != null ? perM2.toFixed(2) : null,
       key: l.instanceId ?? i,
     }
   })
@@ -130,6 +143,7 @@ export default function AssemblyAnalysisTab() {
               </div>
 
               <BarChart title={`${result.label} — GWP A1-A3 by layer (per 1m², thickness-scaled)`} unit="kg CO₂e/m²" bars={gwpBars} exportable />
+              <LayerSharePieChart title={`${result.label} — share of GWP A1-A3 by layer`} unit="kg CO₂e/m²" slices={gwpShareSlices} />
 
               <AiFeedbackPanel assemblyResult={result} />
               <LcaConclusionsPanel assemblyKey={activeSection} />

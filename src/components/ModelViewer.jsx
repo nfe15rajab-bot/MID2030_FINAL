@@ -171,37 +171,81 @@ const ModelViewer = React.memo(function ModelViewer({
         const modelScale = Math.max(preSize.x, preSize.y, preSize.z)
         const weldTolerance = modelScale * 1e-5
 
+        const meshes = []
         gltf.scene.traverse((child) => {
-          if (child.isMesh) {
+          if (child.isMesh) meshes.push(child)
+        })
+
+        // mergeVertices + EdgesGeometry per mesh is real CPU work — doing
+        // every mesh in one synchronous pass (the original approach here)
+        // blocks the single JS thread for the whole duration, which
+        // freezes the ENTIRE page, not just this tab: a click on another
+        // tab button can't even be processed until the block ends, since
+        // nothing else gets a turn on the same thread. Processing a few
+        // meshes per setTimeout(…, 0) tick instead lets the browser handle
+        // input between batches — the model still "loads in the
+        // background" (this effect keeps running even while the user is
+        // on a different tab — see the always-mounted/CSS-hidden comment
+        // on ModelViewer above) without ever locking up the rest of the
+        // app. setTimeout, not requestAnimationFrame — rAF is paused
+        // entirely whenever the tab/window isn't visible (minimized,
+        // backgrounded), which would stall this indefinitely; setTimeout
+        // keeps firing (just throttled) regardless.
+        const MESHES_PER_FRAME = 3
+        let index = 0
+
+        function finishFraming() {
+          const box = new THREE.Box3().setFromObject(gltf.scene)
+          const size = box.getSize(new THREE.Vector3())
+          const center = box.getCenter(new THREE.Vector3())
+          const maxDim = Math.max(size.x, size.y, size.z)
+          const fitSize = maxDim * 1.2
+          frustumHeight = fitSize // remember this framing so a later resize (applySize) rebuilds around it, not the pre-load default
+
+          camera.left = (-fitSize * aspect) / 2
+          camera.right = (fitSize * aspect) / 2
+          camera.top = fitSize / 2
+          camera.bottom = -fitSize / 2
+          camera.near = maxDim / 1000
+          camera.far = maxDim * 10
+          camera.updateProjectionMatrix()
+
+          controls.target.copy(center)
+          camera.position.copy(center).add(new THREE.Vector3(1, 1, 1).multiplyScalar(maxDim))
+          camera.lookAt(center)
+          controls.update()
+
+          setLoaded(true)
+        }
+
+        function processNextBatch() {
+          if (!mounted) return
+          const end = Math.min(index + MESHES_PER_FRAME, meshes.length)
+          for (; index < end; index++) {
+            const child = meshes[index]
             child.material = new THREE.MeshBasicMaterial({ color: 0xffffff })
             const mergedGeometry = mergeVertices(child.geometry, weldTolerance)
             const edges = new THREE.EdgesGeometry(mergedGeometry, 55)
             const outline = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0x000000 }))
             child.add(outline)
           }
-        })
+          // Reuses the same progress readout the network-fetch phase (see
+          // the onProgress callback below) already used, just for the
+          // post-download processing phase instead — same 0-100% meaning
+          // to the user, so it never reads as two different progress bars.
+          setLoadProgress(meshes.length > 0 ? Math.round((index / meshes.length) * 100) : 100)
+          if (index < meshes.length) {
+            setTimeout(processNextBatch, 0)
+          } else {
+            finishFraming()
+          }
+        }
 
-        const box = new THREE.Box3().setFromObject(gltf.scene)
-        const size = box.getSize(new THREE.Vector3())
-        const center = box.getCenter(new THREE.Vector3())
-        const maxDim = Math.max(size.x, size.y, size.z)
-        const fitSize = maxDim * 1.2
-        frustumHeight = fitSize // remember this framing so a later resize (applySize) rebuilds around it, not the pre-load default
-
-        camera.left = (-fitSize * aspect) / 2
-        camera.right = (fitSize * aspect) / 2
-        camera.top = fitSize / 2
-        camera.bottom = -fitSize / 2
-        camera.near = maxDim / 1000
-        camera.far = maxDim * 10
-        camera.updateProjectionMatrix()
-
-        controls.target.copy(center)
-        camera.position.copy(center).add(new THREE.Vector3(1, 1, 1).multiplyScalar(maxDim))
-        camera.lookAt(center)
-        controls.update()
-
-        setLoaded(true)
+        if (meshes.length === 0) {
+          finishFraming()
+        } else {
+          setTimeout(processNextBatch, 0)
+        }
       },
       (progressEvent) => {
         if (progressEvent.lengthComputable) {

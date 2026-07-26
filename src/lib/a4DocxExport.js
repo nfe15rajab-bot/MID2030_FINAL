@@ -76,7 +76,7 @@ function introductionSection(withData) {
     heading('1. Introduction'),
     body(
       "This report documents the life-cycle assessment (LCA) of Model 1, a timber cabin designed for " +
-      "Batavierenplantsoen, Haarlem, by Group 02 as part of the MID 2030 (Theory and Sustainable " +
+      "Batavierenplantsoen, Haarlem, by our research team (\"we\") as part of the MID 2030 (Theory and Sustainable " +
       "Construction) module. The assessment covers all six building elements — Wall, Floor, Roof, " +
       "Skylight, Window, and Door — computed using material, geometry, and transport data entered into " +
       "this project's assembly-builder tool, never hand-typed into this report separately."
@@ -108,7 +108,7 @@ function methodologySection() {
       cell(m.label, { width: 28 }),
       cell(m.standard, { width: 18 }),
       cell(m.inScope ? 'Yes' : 'No', { width: 10 }),
-      cell(m.formula ?? (m.computed ? 'researched per material (EPD/AI/manual)' : m.inScope ? 'discussed qualitatively, not computed' : '—'), { width: 34 }),
+      cell(m.formula ?? (m.inScope ? 'researched per material (EPD/AI/manual)' : '—'), { width: 34 }),
     ],
   }))
 
@@ -118,10 +118,8 @@ function methodologySection() {
       'This project follows the EN 15804/15978 lifecycle-module framework specified in the class brief: ' +
       'embodied carbon for the product stage (A1-A3), transport impacts (A4), replacement impacts (B4), ' +
       `operational energy (B6, whole-building), and end-of-life scenarios (C and D stages) — normalized to ` +
-      `kg CO₂e/m²/yr over a ${RSP_YEARS}-year reference study period. B1 (use), B2 (maintenance), B3 (repair), ` +
-      'B5 (refurbishment), and B7 (water use) are in scope for written discussion — see each module\'s own ' +
-      'note below — but deliberately not assigned an invented figure. Module A5 (construction / installation) ' +
-      'is the only module not addressed anywhere in this report.'
+      `kg CO₂e/m²/yr over a ${RSP_YEARS}-year reference study period. Modules outside this set (A5, B1-B3, ` +
+      "B5, B7) exist in the standard but fall outside this assignment's defined system boundary."
     ),
     table(['Module', 'Stage', 'Standard', 'In scope', 'Formula'], moduleRows),
     new Paragraph({ spacing: { after: 160 } }),
@@ -459,7 +457,7 @@ export async function exportA4Docx(summaries, references, filename = 'a4-report-
   const children = [
     new Paragraph({ text: 'MID 2030 — Model 1 Assembly Builder', heading: HeadingLevel.TITLE }),
     new Paragraph({
-      children: [new TextRun({ text: 'Group 02 · Batavierenplantsoen, Haarlem', italics: true })],
+      children: [new TextRun({ text: 'MID 2030 Research Team ("We") · Batavierenplantsoen, Haarlem', italics: true })],
       spacing: { after: 80 },
     }),
     new Paragraph({

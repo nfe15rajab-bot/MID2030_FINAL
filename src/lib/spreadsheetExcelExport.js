@@ -40,7 +40,8 @@ const COLUMNS = [
   ['GWP unit value', 'gwpUnitValue', 'gwp'],
   ['A1-A3 (kgCO2e)', 'a1a3', 'gwp'],
   ['Distance (km)', 'distanceKm', 'transport'],
-  ['A4 (kgCO2e)', 'a4', 'transport'],
+  ['A4 Round-Trip (kgCO2e)', 'a4', 'transport'],
+  ['Consolidated A4 (kgCO2e)', 'a4Consolidated', 'transport'],
   ['Life Span (yr)', 'lifeSpanYears', 'replacement'],
   ['Replacements /50yr', 'replacementCount', 'replacement'],
   ['B4 (kgCO2e)', 'b4', 'replacement'],
@@ -61,7 +62,7 @@ const COLUMNS = [
 const BAND_SPANS = [
   ['Architectural Elements Description', 12, 'description'],
   ['LCA Production Stage (GWP)', 3, 'gwp'],
-  ['Transportation', 2, 'transport'],
+  ['Transportation (Round-Trip & Consolidated)', 3, 'transport'],
   ['Replacement Stage', 3, 'replacement'],
   ['End-of-life (C1-C4/D)', 5, 'eol'],
   ['Operation Energy Use Stage', 5, 'energy'],
@@ -103,7 +104,7 @@ export async function exportSpreadsheetExcel(rows, meta, filename = 'group2_v2-s
   // ==========================================
   // SHEET 1: Prof Thomaz Reference & Overview
   // ==========================================
-  const overviewSheet = workbook.addWorksheet('Prof Thomaz Reference & Overview')
+  const overviewSheet = workbook.addWorksheet('Prof Thomaz Reference')
   overviewSheet.columns = [
     { header: 'Parameter / Rule Description', width: 45 },
     { header: 'Value / Reference Standard', width: 55 },
@@ -152,11 +153,11 @@ export async function exportSpreadsheetExcel(rows, meta, filename = 'group2_v2-s
   h2.font = { bold: true, size: 12 }
   h2.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDBE8F3' } }
 
-  const emptyCons = meta.transportAssumptions?.emptyConsumptionLPer100Km ?? 25.0
-  const loadedDiff = meta.transportAssumptions?.loadedVsEmptyDiffLPer100Km ?? 10.0
-  const payload = meta.transportAssumptions?.payloadCapacityTonnes ?? 20.0
-  const dieselDensity = meta.transportAssumptions?.dieselDensityKgPerL ?? 0.84
-  const dieselGhg = meta.transportAssumptions?.dieselGhgFactorKgCo2ePerKg ?? 3.16
+  const emptyCons = meta.transportAssumptions?.emptyConsumptionLPer100Km ?? 16.6
+  const loadedDiff = meta.transportAssumptions?.loadedVsEmptyDiffLPer100Km ?? 2.4
+  const payload = meta.transportAssumptions?.payloadCapacityTonnes ?? 6.0
+  const dieselDensity = meta.transportAssumptions?.dieselDensityKgPerL ?? 0.832
+  const dieselGhg = meta.transportAssumptions?.dieselGhgFactorKgCo2ePerKg ?? 3.74
   const wasteDist = meta.settings?.wasteFacilityDistanceKm ?? 30.0
 
   overviewSheet.addRow(['Consume empty vehicle', emptyCons, 'l / 100km', 'Base empty truck fuel consumption']) // Row 17 (index 17)
@@ -227,9 +228,9 @@ export async function exportSpreadsheetExcel(rows, meta, filename = 'group2_v2-s
       'Total Weight (kg)': { formula: `SUMIF(${DET}!$A$3:$A$150, "*${code}*", ${DET}!$L$3:$L$150)` },
       'A1-A3 Production (kgCO2e)': { formula: `SUMIF(${DET}!$A$3:$A$150, "*${code}*", ${DET}!$O$3:$O$150)` },
       'A4 Transport (kgCO2e)': { formula: `SUMIF(${DET}!$A$3:$A$150, "*${code}*", ${DET}!$Q$3:$Q$150)` },
-      'B4 Replacement (kgCO2e)': { formula: `SUMIF(${DET}!$A$3:$A$150, "*${code}*", ${DET}!$T$3:$T$150)` },
-      'C1-C4 End-of-Life (kgCO2e)': { formula: `SUMIF(${DET}!$A$3:$A$150, "*${code}*", ${DET}!$U$3:$U$150)+SUMIF(${DET}!$A$3:$A$150, "*${code}*", ${DET}!$V$3:$V$150)+SUMIF(${DET}!$A$3:$A$150, "*${code}*", ${DET}!$W$3:$W$150)+SUMIF(${DET}!$A$3:$A$150, "*${code}*", ${DET}!$X$3:$X$150)` },
-      'Module D Credit (kgCO2e)': { formula: `SUMIF(${DET}!$A$3:$A$150, "*${code}*", ${DET}!$Y$3:$Y$150)` },
+      'B4 Replacement (kgCO2e)': { formula: `SUMIF(${DET}!$A$3:$A$150, "*${code}*", ${DET}!$U$3:$U$150)` },
+      'C1-C4 End-of-Life (kgCO2e)': { formula: `SUMIF(${DET}!$A$3:$A$150, "*${code}*", ${DET}!$V$3:$V$150)+SUMIF(${DET}!$A$3:$A$150, "*${code}*", ${DET}!$W$3:$W$150)+SUMIF(${DET}!$A$3:$A$150, "*${code}*", ${DET}!$X$3:$X$150)+SUMIF(${DET}!$A$3:$A$150, "*${code}*", ${DET}!$Y$3:$Y$150)` },
+      'Module D Credit (kgCO2e)': { formula: `SUMIF(${DET}!$A$3:$A$150, "*${code}*", ${DET}!$Z$3:$Z$150)` },
       'Total Embodied GWP (kgCO2e)': { formula: `D${rowNum}+E${rowNum}+F${rowNum}+G${rowNum}` },
       'Normalized GWP (kgCO2e/m²)': { formula: `IF(B${rowNum}>0, I${rowNum}/B${rowNum}, 0)` },
     })
@@ -289,7 +290,7 @@ export async function exportSpreadsheetExcel(rows, meta, filename = 'group2_v2-s
   labelRow.commit()
 
   // Ref helper for Sheet 1 transport params
-  const OVR = "'Prof Thomaz Reference & Overview'"
+  const OVR = "'Prof Thomaz Reference'"
   const OVR_EMPTY = `${OVR}!$B$17`
   const OVR_DIFF = `${OVR}!$B$18`
   const OVR_PAYLOAD = `${OVR}!$B$19`
@@ -451,7 +452,7 @@ export async function exportReferenceMatchingExcel(rows, meta, filename = 'LCA-T
   // ----------------------------------------------------
   // 1. Overview & Transport Parameters Sheet
   // ----------------------------------------------------
-  const overviewSheet = workbook.addWorksheet('Prof Thomaz Reference & Overview')
+  const overviewSheet = workbook.addWorksheet('Prof Thomaz Reference')
   overviewSheet.columns = [
     { header: 'Parameter / Rule Description', width: 45 },
     { header: 'Value / Reference Standard', width: 55 },
@@ -496,11 +497,11 @@ export async function exportReferenceMatchingExcel(rows, meta, filename = 'LCA-T
   h2.font = { bold: true, size: 12 }
   h2.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDBE8F3' } }
 
-  const emptyCons = meta.transportAssumptions?.emptyConsumptionLPer100Km ?? 25.0
-  const loadedDiff = meta.transportAssumptions?.loadedVsEmptyDiffLPer100Km ?? 10.0
-  const payload = meta.transportAssumptions?.payloadCapacityTonnes ?? 20.0
-  const dieselDensity = meta.transportAssumptions?.dieselDensityKgPerL ?? 0.84
-  const dieselGhg = meta.transportAssumptions?.dieselGhgFactorKgCo2ePerKg ?? 3.16
+  const emptyCons = meta.transportAssumptions?.emptyConsumptionLPer100Km ?? 16.6
+  const loadedDiff = meta.transportAssumptions?.loadedVsEmptyDiffLPer100Km ?? 2.4
+  const payload = meta.transportAssumptions?.payloadCapacityTonnes ?? 6.0
+  const dieselDensity = meta.transportAssumptions?.dieselDensityKgPerL ?? 0.832
+  const dieselGhg = meta.transportAssumptions?.dieselGhgFactorKgCo2ePerKg ?? 3.74
   const wasteDist = meta.settings?.wasteFacilityDistanceKm ?? 30.0
 
   overviewSheet.addRow(['Consume empty vehicle', emptyCons, 'l / 100km', 'Base empty truck fuel consumption']) // Row 17
@@ -511,7 +512,7 @@ export async function exportReferenceMatchingExcel(rows, meta, filename = 'LCA-T
   overviewSheet.addRow(['Waste facility distance', wasteDist, 'km', 'Default distance to Haarlem municipal waste processing plant'])
 
   // Ref helpers for Overview sheet
-  const OVR = "'Prof Thomaz Reference & Overview'"
+  const OVR = "'Prof Thomaz Reference'"
   const OVR_EMPTY = `${OVR}!$B$17`
   const OVR_DIFF = `${OVR}!$B$18`
   const OVR_PAYLOAD = `${OVR}!$B$19`
@@ -555,7 +556,8 @@ export async function exportReferenceMatchingExcel(rows, meta, filename = 'LCA-T
     { header: 'Area (m²)', width: 14 },
     { header: 'Total Weight (kg)', width: 18 },
     { header: 'A1-A3 Production (kgCO2e)', width: 24 },
-    { header: 'A4 Transport (kgCO2e)', width: 22 },
+    { header: 'A4 Transport (Round-Trip) (kgCO2e)', width: 26 },
+    { header: 'Consolidated A4 (t·km) (kgCO2e)', width: 26 },
     { header: 'B4 Replacement (kgCO2e)', width: 24 },
     { header: 'C1-C4 End-of-Life (kgCO2e)', width: 24 },
     { header: 'Module D Credit (kgCO2e)', width: 22 },
@@ -563,13 +565,13 @@ export async function exportReferenceMatchingExcel(rows, meta, filename = 'LCA-T
     { header: 'Normalized GWP (kgCO2e/m²)', width: 24 },
   ]
 
-  analysisSheet.mergeCells('A1:J1')
+  analysisSheet.mergeCells('A1:K1')
   const aTitle = analysisSheet.getCell('A1')
   aTitle.value = 'MID 2030 — Master Assembly Analysis (Professor Thomaz Reference)'
   aTitle.font = { bold: true, size: 14, color: { argb: 'FF1E293B' } }
   aTitle.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE2E8F0' } }
 
-  analysisSheet.mergeCells('A2:J2')
+  analysisSheet.mergeCells('A2:K2')
   const aSub = analysisSheet.getCell('A2')
   aSub.value = 'Batavierenplantsoen, Haarlem | Multi-Assembly LCA Aggregation referencing individual assembly worksheets'
   aSub.font = { italic: true, size: 11 }
@@ -579,9 +581,9 @@ export async function exportReferenceMatchingExcel(rows, meta, filename = 'LCA-T
   // Header row at row 4
   const aHeaderRow = analysisSheet.addRow([
     'Assembly / Element', 'Area (m²)', 'Total Weight (kg)',
-    'A1-A3 Production (kgCO2e)', 'A4 Transport (kgCO2e)', 'B4 Replacement (kgCO2e)',
-    'C1-C4 End-of-Life (kgCO2e)', 'Module D Credit (kgCO2e)', 'Total Embodied GWP (kgCO2e)',
-    'Normalized GWP (kgCO2e/m²)',
+    'A1-A3 Production (kgCO2e)', 'A4 Transport (Round-Trip) (kgCO2e)', 'Consolidated A4 (t·km) (kgCO2e)',
+    'B4 Replacement (kgCO2e)', 'C1-C4 End-of-Life (kgCO2e)', 'Module D Credit (kgCO2e)',
+    'Total Embodied GWP (kgCO2e)', 'Normalized GWP (kgCO2e/m²)',
   ])
   aHeaderRow.font = { bold: true, color: { argb: 'FFFFFFFF' } }
   aHeaderRow.eachCell((cell) => {
@@ -682,6 +684,10 @@ export async function exportReferenceMatchingExcel(rows, meta, filename = 'LCA-T
             + `(2*${ref('distanceKm', row)})*(${OVR_EMPTY}+(${OVR_DIFF}*((${ref('weightKg', row)}/1000)/2)/${OVR_PAYLOAD}))`
             + `/100*${OVR_DENSITY}*${OVR_GHG})`,
         },
+        a4Consolidated: isUnitRow ? num(r.a4Consolidated || r.a4, 1) : {
+          formula: `IF(OR(${ref('distanceKm', row)}="",${ref('weightKg', row)}=""),"TBD",`
+            + `(${ref('weightKg', row)}/1000)*${ref('distanceKm', row)}*(2*(${OVR_EMPTY}+${OVR_DIFF})/${OVR_PAYLOAD})/100*${OVR_DENSITY}*${OVR_GHG})`,
+        },
         lifeSpanYears: r.lifeSpanYears ?? null,
         replacementCount: {
           formula: `IF(OR(${ref('lifeSpanYears', row)}="",${ref('lifeSpanYears', row)}<=0),"",MAX(ROUNDUP(50/${ref('lifeSpanYears', row)},0)-1,0))`,
@@ -735,9 +741,11 @@ export async function exportReferenceMatchingExcel(rows, meta, filename = 'LCA-T
 
     if (dataRowsCount > 0) {
       const dataRange = (key) => `${ref(key, dataStartRow)}:${ref(key, dataEndRow)}`
+      totalsRow.getCell(colIndex.areaM2).value = { formula: `MAX(${dataRange('areaM2')})` }
       totalsRow.getCell(colIndex.weightKg).value = { formula: `SUM(${dataRange('weightKg')})` }
       totalsRow.getCell(colIndex.a1a3).value = { formula: `SUM(${dataRange('a1a3')})` }
       totalsRow.getCell(colIndex.a4).value = { formula: `SUM(${dataRange('a4')})` }
+      totalsRow.getCell(colIndex.a4Consolidated).value = { formula: `SUM(${dataRange('a4Consolidated')})` }
       totalsRow.getCell(colIndex.b4).value = {
         formula: `IF(COUNTIF(${dataRange('b4')},"not yet assessed")>0,"not yet assessed",SUM(${dataRange('b4')}))`,
       }
@@ -748,9 +756,11 @@ export async function exportReferenceMatchingExcel(rows, meta, filename = 'LCA-T
       totalsRow.getCell(colIndex.moduleD).value = { formula: `SUM(${dataRange('moduleD')})` }
       totalsRow.getCell(colIndex.b6YearlySpace).value = { formula: `${ref('b6YearlySpace', dataStartRow)}` }
     } else {
+      totalsRow.getCell(colIndex.areaM2).value = 0
       totalsRow.getCell(colIndex.weightKg).value = 0
       totalsRow.getCell(colIndex.a1a3).value = 0
       totalsRow.getCell(colIndex.a4).value = 0
+      totalsRow.getCell(colIndex.a4Consolidated).value = 0
       totalsRow.getCell(colIndex.b4).value = 0
       totalsRow.getCell(colIndex.c1).value = 0
       totalsRow.getCell(colIndex.c2).value = 0
@@ -802,21 +812,18 @@ export async function exportReferenceMatchingExcel(rows, meta, filename = 'LCA-T
     const S = `'${metaItem.cfg.sheetName}'`
     const tot = metaItem.totalsRow
 
-    const areaFormula = metaItem.hasData
-      ? `IFERROR(AVERAGEIFS(${S}!$K$3:$K$${metaItem.dataEndRow}, ${S}!$A$3:$A$${metaItem.dataEndRow}, "<>"), 0)`
-      : `0`
-
     analysisSheet.addRow({
       'Assembly / Element': metaItem.cfg.label,
-      'Area (m²)': { formula: areaFormula },
+      'Area (m²)': { formula: `${S}!K${tot}` },
       'Total Weight (kg)': { formula: `${S}!L${tot}` },
       'A1-A3 Production (kgCO2e)': { formula: `${S}!O${tot}` },
-      'A4 Transport (kgCO2e)': { formula: `${S}!Q${tot}` },
-      'B4 Replacement (kgCO2e)': { formula: `IF(ISNUMBER(${S}!T${tot}), ${S}!T${tot}, 0)` },
-      'C1-C4 End-of-Life (kgCO2e)': { formula: `${S}!U${tot}+${S}!V${tot}+${S}!W${tot}+${S}!X${tot}` },
-      'Module D Credit (kgCO2e)': { formula: `${S}!Y${tot}` },
-      'Total Embodied GWP (kgCO2e)': { formula: `D${rowNum}+E${rowNum}+F${rowNum}+G${rowNum}` },
-      'Normalized GWP (kgCO2e/m²)': { formula: `IF(B${rowNum}>0, I${rowNum}/B${rowNum}, 0)` },
+      'A4 Transport (Round-Trip) (kgCO2e)': { formula: `${S}!Q${tot}` },
+      'Consolidated A4 (t·km) (kgCO2e)': { formula: `${S}!R${tot}` },
+      'B4 Replacement (kgCO2e)': { formula: `IF(ISNUMBER(${S}!U${tot}), ${S}!U${tot}, 0)` },
+      'C1-C4 End-of-Life (kgCO2e)': { formula: `${S}!V${tot}+${S}!W${tot}+${S}!X${tot}+${S}!Y${tot}` },
+      'Module D Credit (kgCO2e)': { formula: `${S}!Z${tot}` },
+      'Total Embodied GWP (kgCO2e)': { formula: `D${rowNum}+E${rowNum}+G${rowNum}+H${rowNum}` },
+      'Normalized GWP (kgCO2e/m²)': { formula: `IF(B${rowNum}>0, J${rowNum}/B${rowNum}, 0)` },
     })
   })
 
@@ -829,12 +836,13 @@ export async function exportReferenceMatchingExcel(rows, meta, filename = 'LCA-T
     'Area (m²)': { formula: `SUM(B${startSummaryRowIndex}:B${startSummaryRowIndex + 2})` }, // Floor area sum over Wall, Floor, Roof
     'Total Weight (kg)': { formula: `SUM(C${startSummaryRowIndex}:C${endSummaryRowIndex})` },
     'A1-A3 Production (kgCO2e)': { formula: `SUM(D${startSummaryRowIndex}:D${endSummaryRowIndex})` },
-    'A4 Transport (kgCO2e)': { formula: `SUM(E${startSummaryRowIndex}:E${endSummaryRowIndex})` },
-    'B4 Replacement (kgCO2e)': { formula: `SUM(F${startSummaryRowIndex}:F${endSummaryRowIndex})` },
-    'C1-C4 End-of-Life (kgCO2e)': { formula: `SUM(G${startSummaryRowIndex}:G${endSummaryRowIndex})` },
-    'Module D Credit (kgCO2e)': { formula: `SUM(H${startSummaryRowIndex}:H${endSummaryRowIndex})` },
-    'Total Embodied GWP (kgCO2e)': { formula: `SUM(I${startSummaryRowIndex}:I${endSummaryRowIndex})` },
-    'Normalized GWP (kgCO2e/m²)': { formula: `IF(B${grandTotalRowNum}>0, I${grandTotalRowNum}/B${grandTotalRowNum}, 0)` },
+    'A4 Transport (Round-Trip) (kgCO2e)': { formula: `SUM(E${startSummaryRowIndex}:E${endSummaryRowIndex})` },
+    'Consolidated A4 (t·km) (kgCO2e)': { formula: `SUM(F${startSummaryRowIndex}:F${endSummaryRowIndex})` },
+    'B4 Replacement (kgCO2e)': { formula: `SUM(G${startSummaryRowIndex}:G${endSummaryRowIndex})` },
+    'C1-C4 End-of-Life (kgCO2e)': { formula: `SUM(H${startSummaryRowIndex}:H${endSummaryRowIndex})` },
+    'Module D Credit (kgCO2e)': { formula: `SUM(I${startSummaryRowIndex}:I${endSummaryRowIndex})` },
+    'Total Embodied GWP (kgCO2e)': { formula: `SUM(J${startSummaryRowIndex}:J${endSummaryRowIndex})` },
+    'Normalized GWP (kgCO2e/m²)': { formula: `IF(B${grandTotalRowNum}>0, J${grandTotalRowNum}/B${grandTotalRowNum}, 0)` },
   })
 
   totRow.eachCell((cell) => {

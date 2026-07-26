@@ -81,6 +81,9 @@ export function getSpreadsheetRows() {
         a1a3: layer.a1a3,
         distanceKm: layer.distanceKm,
         a4: layer.a4CO2Kg,
+        a4Consolidated: layer.massKg && layer.distanceKm
+          ? (layer.massKg / 1000) * layer.distanceKm * ((2 * (TRANSPORT_ASSUMPTIONS.emptyConsumptionLPer100Km + TRANSPORT_ASSUMPTIONS.loadedVsEmptyDiffLPer100Km) / TRANSPORT_ASSUMPTIONS.payloadCapacityTonnes) / 100 * TRANSPORT_ASSUMPTIONS.dieselDensityKgPerL * TRANSPORT_ASSUMPTIONS.dieselGhgFactorKgCo2ePerKg)
+          : null,
         lifeSpanYears: layer.serviceLifeYears,
         replacementCount: layer.b4ReplacementCount,
         b4: layer.b4,

@@ -63,7 +63,7 @@ export function buildLayerCalculationSteps(assemblyKey, layerResult) {
         formula: 'R = thickness / λ',
         substituted: `R = ${fmt(thicknessM, 4)} m / ${fmt(layerResult.thermalConductivityWmK, 3)} W/mK`,
         result: `${fmt(r, 4)} m²K/W`,
-        note: 'Added to Rsi + Rse + every other layer\'s R for the assembly U-value — see Section 3\'s U-value line.',
+        note: 'Added to Rsi + Rse + every other layer\'s R for the assembly U-value — see Section 4\'s U-value line.',
       })
     } else {
       steps.push({ module: 'R-value', formula: null, substituted: null, result: '—', note: 'Missing thickness or λ' })

@@ -3,6 +3,7 @@ import ModelViewer from './components/ModelViewer.jsx'
 import ConfiguratorPanel from './components/ConfiguratorPanel.jsx'
 import SectionConfigurator from './components/SectionConfigurator.jsx'
 import AssemblyAnalysisTab from './components/AssemblyAnalysisTab.jsx'
+import LcaMethodologyTab from './components/LcaMethodologyTab.jsx'
 import LcaEpdTab from './components/LcaEpdTab.jsx'
 import ProvidersTab from './components/ProvidersTab.jsx'
 import TeamSummaryTab from './components/TeamSummaryTab.jsx'
@@ -15,7 +16,7 @@ import { hotspots } from './data/hotspots.js'
 import 'leaflet/dist/leaflet.css'
 import './styles.css'
 
-const TABS = ['3D Model', 'Section Configurator', 'Assembly Analysis Preview', 'LCA and EPD', 'Materials and Providers', 'Team Summary', 'LCA Summary', 'Spreadsheet', 'Deliverables']
+const TABS = ['3D Model', 'LCA Methodology', 'Section Configurator', 'Assembly Analysis Preview', 'LCA and EPD', 'Materials and Providers', 'Team Summary', 'LCA Summary', 'Spreadsheet', 'Deliverables']
 
 export default function App() {
   return (
@@ -127,6 +128,8 @@ function AppShell() {
           </div>
         </div>
       </section>
+
+      {activeTab === 'LCA Methodology' && <LcaMethodologyTab />}
 
       {activeTab === 'Section Configurator' && (
         <SectionConfigurator

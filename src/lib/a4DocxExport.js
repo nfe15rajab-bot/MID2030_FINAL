@@ -7,16 +7,20 @@
 // Table (vector/text, not a pasted screenshot) for exactly that reason —
 // see each section's own comment for what real data it reuses.
 //
-// Structure (per the team's 2026-07-25 report spec): Introduction,
-// Material research by discipline, Assemblies (6, each with layer order +
-// sd/U/GWP + assumptions/references + its own LCA/EPD conclusion), Global
-// LCA, Global EPD (provider concentration), Conclusion, References.
+// Structure (per the team's 2026-07-25 report spec, +Methodology added
+// 2026-07-26 to match the brief's required abstract/introduction/
+// methodology/results/discussion academic structure): Introduction,
+// Methodology (condensed from src/data/lcaMethodology.js), Material
+// research by discipline, Assemblies (6, each with layer order + sd/U/GWP
+// + assumptions/references + its own LCA/EPD conclusion), Global LCA,
+// Global EPD (provider concentration), Conclusion, References.
 import { Document, Packer, Paragraph, TextRun, HeadingLevel, Table, TableRow, TableCell, WidthType, AlignmentType } from 'docx'
 import { getMaterialResearchByDiscipline, getGlobalLcaSummary, getGlobalProviderStats } from './deliverablesData.js'
 import { classifyAssemblySustainability } from './sustainabilityRubric.js'
 import { loadFicheDetail } from './ficheStorage.js'
 import { getAllMaterials } from './materialsCatalog.js'
 import { buildLayerCalculationSteps, buildUValueAssemblyStep } from './calculationNarrative.js'
+import { LCA_MODULES, NORMALIZATION, U_VALUE, GLOSSARY, RSP_YEARS } from '../data/lcaMethodology.js'
 
 const EOL_TIER_LABEL = {
   epd: 'EPD-sourced',
@@ -78,7 +82,7 @@ function introductionSection(withData) {
       "this project's assembly-builder tool, never hand-typed into this report separately."
     ),
     body(
-      `As of this draft, ${withData.length}/6 assemblies have saved data (see Section 3 for which). ` +
+      `As of this draft, ${withData.length}/6 assemblies have saved data (see Section 4 for which). ` +
       'Methodology: U-value per DIN EN ISO 6946 (U = 1 / (Rsi + Σ(thickness/λ) + Rse)); A1-A3 (product ' +
       'stage) = declared GWP unit value × quantity, derived from each layer\'s functional unit (m², m³, ' +
       'kg, or unit count for Door/Window/Skylight); A4 (transport) per DIN EN ISO 14083, routed ' +
@@ -92,16 +96,63 @@ function introductionSection(withData) {
 }
 
 // ---------------------------------------------------------------------
-// Section 2 — Material research by discipline
+// Section 2 — Methodology (added 2026-07-26). Condensed from
+// src/data/lcaMethodology.js, which also backs the in-app LCA
+// Methodology tab — one shared source so the report and the tab can't
+// disagree on a formula or a scope call.
+// ---------------------------------------------------------------------
+function methodologySection() {
+  const moduleRows = LCA_MODULES.map((m) => new TableRow({
+    children: [
+      cell(m.code, { width: 10 }),
+      cell(m.label, { width: 28 }),
+      cell(m.standard, { width: 18 }),
+      cell(m.inScope ? 'Yes' : 'No', { width: 10 }),
+      cell(m.formula ?? (m.inScope ? 'researched per material (EPD/AI/manual)' : '—'), { width: 34 }),
+    ],
+  }))
+
+  return [
+    heading('2. Methodology'),
+    body(
+      'This project follows the EN 15804/15978 lifecycle-module framework specified in the class brief: ' +
+      'embodied carbon for the product stage (A1-A3), transport impacts (A4), replacement impacts (B4), ' +
+      `operational energy (B6, whole-building), and end-of-life scenarios (C and D stages) — normalized to ` +
+      `kg CO₂e/m²/yr over a ${RSP_YEARS}-year reference study period. Modules outside this set (A5, B1-B3, ` +
+      "B5, B7) exist in the standard but fall outside this assignment's defined system boundary."
+    ),
+    table(['Module', 'Stage', 'Standard', 'In scope', 'Formula'], moduleRows),
+    new Paragraph({ spacing: { after: 160 } }),
+
+    subheading('Thermal performance (U-value)'),
+    body(`${U_VALUE.standard}: ${U_VALUE.formula.split('\n').join(' · ')}.`),
+    table(
+      ['Element', 'Rsi (m²K/W)', 'Rse (m²K/W)'],
+      Object.entries(U_VALUE.surfaceResistances).map(([key, r]) => new TableRow({
+        children: [cell(key), cell(String(r.rsi)), cell(String(r.rse))],
+      }))
+    ),
+    note(U_VALUE.note),
+
+    subheading('Normalization'),
+    body(`${NORMALIZATION.formula} (${NORMALIZATION.unit}). ${NORMALIZATION.note}`),
+
+    subheading('Glossary'),
+    ...GLOSSARY.map((g) => body(`${g.name}: ${g.definition}${g.note ? ` ${g.note}` : ''}`)),
+  ]
+}
+
+// ---------------------------------------------------------------------
+// Section 3 — Material research by discipline
 // ---------------------------------------------------------------------
 function materialResearchSection() {
   const groups = getMaterialResearchByDiscipline()
   if (groups.length === 0) {
-    return [heading('2. Material Research by Discipline'), body('No materials saved yet in any assembly.')]
+    return [heading('3. Material Research by Discipline'), body('No materials saved yet in any assembly.')]
   }
 
   const children = [
-    heading('2. Material Research by Discipline'),
+    heading('3. Material Research by Discipline'),
     body(
       'Every distinct material used across all six assemblies, grouped by discipline (Cladding, ' +
       'Sheathing, Insulation, Membrane, Finishing, Framing, ...) — the fiche technique research for each, ' +
@@ -132,7 +183,7 @@ function materialResearchSection() {
 }
 
 // ---------------------------------------------------------------------
-// Section 3 — Assemblies (one per assembly)
+// Section 4 — Assemblies (one per assembly)
 // ---------------------------------------------------------------------
 function layerOrderTable(summary) {
   const rows = summary.layerResults ?? []
@@ -298,21 +349,21 @@ function assembliesSection(summaries) {
   const byKey = Object.fromEntries(summaries.map((s) => [s.key, s]))
   const ordered = REPORT_ASSEMBLY_ORDER.map((k) => byKey[k]).filter(Boolean)
   return [
-    heading('3. Assemblies'),
+    heading('4. Assemblies'),
     body('Wall, Floor, Roof, Skylight, Window, Door — in that order, each with its full layer order, key figures, sourcing, and a sustainability conclusion of the whole assembly (not just one material).'),
     ...ordered.flatMap(assemblySection),
   ]
 }
 
 // ---------------------------------------------------------------------
-// Section 4 — Global LCA
+// Section 5 — Global LCA
 // ---------------------------------------------------------------------
 function globalLcaSection() {
   const g = getGlobalLcaSummary()
   const veryOrSustainableCount = g.perAssembly.filter((a) => a.sustainability.uValue?.tier === 'very' || a.sustainability.uValue?.tier === 'sustainable').length
 
   return [
-    heading('4. Global LCA'),
+    heading('5. Global LCA'),
     body(`${g.assessedAssemblyCount}/${g.totalAssemblyCount} assemblies have saved data and are included in this rollup.`),
     table(
       ['Assembly', 'U-value (W/m²K)', 'A1-A3 (kg CO₂e)', 'A4 (kg CO₂e)', 'Thermal tier', 'Embodied-carbon tier'],
@@ -330,7 +381,7 @@ function globalLcaSection() {
     new Paragraph({ spacing: { after: 160 } }),
 
     subheading('Assessment by lifecycle phase'),
-    body(`Phase A (product + construction). A1-A3 whole-building total (sum of assessed assemblies): ${g.a1a3Total != null ? `${fmt(g.a1a3Total, 1)} kg CO₂e` : 'not yet computable'}. A4 (transport) total: ${g.a4Total != null ? `${fmt(g.a4Total, 1)} kg CO₂e` : 'not yet computable'} — routed via the Detmold hub with real driving distances for every wall and roof provider fetched this round (see Section 5).`),
+    body(`Phase A (product + construction). A1-A3 whole-building total (sum of assessed assemblies): ${g.a1a3Total != null ? `${fmt(g.a1a3Total, 1)} kg CO₂e` : 'not yet computable'}. A4 (transport) total: ${g.a4Total != null ? `${fmt(g.a4Total, 1)} kg CO₂e` : 'not yet computable'} — routed via the Detmold hub with real driving distances for every wall and roof provider fetched this round (see Section 6).`),
     body(`Phase B (use). B4 (replacement) total: ${g.b4Total != null ? `${fmt(g.b4Total, 1)} kg CO₂e` : 'not yet computable — needs every layer\'s service life researched'}. Operational energy (B6) is tracked separately in LCA Summary\'s Operational Energy settings, not folded into this figure.`),
     body(`Phase C&D (end-of-life). C1 (deconstruction): ${g.c1Total != null ? fmt(g.c1Total, 1) : '—'}, C3 (waste processing): ${g.c3Total != null ? fmt(g.c3Total, 1) : '—'}, C4 (disposal): ${g.c4Total != null ? fmt(g.c4Total, 1) : '—'}, Module D (recovery credit): ${g.moduleDTotal != null ? fmt(g.moduleDTotal, 1) : '—'} kg CO₂e — sums are only meaningful across the layers that have been researched (see each assembly\'s Assumptions table for which).`),
 
@@ -353,12 +404,12 @@ function globalLcaSection() {
 }
 
 // ---------------------------------------------------------------------
-// Section 5 — Global EPD (provider concentration)
+// Section 6 — Global EPD (provider concentration)
 // ---------------------------------------------------------------------
 function globalEpdSection() {
   const stats = getGlobalProviderStats()
   return [
-    heading('5. Global EPD — Provider Concentration'),
+    heading('6. Global EPD — Provider Concentration'),
     body(
       `${stats.count} active providers (every provider actually linked to a used material) plotted against ` +
       `the site: ${stats.within500}/${stats.count} within 500 km straight-line, ${stats.within1000}/${stats.count} ` +
@@ -372,16 +423,16 @@ function globalEpdSection() {
         children: [cell(p.name, { width: 22 }), cell(p.address, { width: 32 }), cell(String(Math.round(p.distanceToSiteKm))), cell(p.materialIds.join(', '), { width: 30 })],
       }))
     ),
-    note('Distance here is straight-line, for a quick concentration read — real routed A4 transport distances (via the Detmold hub) are in Section 3/4 and the Spreadsheet export.'),
+    note('Distance here is straight-line, for a quick concentration read — real routed A4 transport distances (via the Detmold hub) are in Section 4/5 and the Spreadsheet export.'),
   ]
 }
 
 // ---------------------------------------------------------------------
-// Section 6 — Conclusion and potential improvements
+// Section 7 — Conclusion and potential improvements
 // ---------------------------------------------------------------------
 function conclusionSection(withData) {
   return [
-    heading('6. Conclusion and Potential Improvements'),
+    heading('7. Conclusion and Potential Improvements'),
     body(
       `${withData.length}/6 assemblies are fully modeled with real, sourced data as of this draft (Wall and ` +
       'Roof, both this round — Floor/Door/Window/Skylight are still on the original catalog placeholders and ' +
@@ -415,13 +466,14 @@ export async function exportA4Docx(summaries, references, filename = 'a4-report-
     }),
 
     ...introductionSection(withData),
+    ...methodologySection(),
     ...materialResearchSection(),
     ...assembliesSection(summaries),
     ...globalLcaSection(),
     ...globalEpdSection(),
     ...conclusionSection(withData),
 
-    heading('7. References'),
+    heading('8. References'),
     ...(references.length === 0
       ? [body('No accepted AI-suggestions or Ökobaudat citations yet.')]
       : references.map((r) => new Paragraph({

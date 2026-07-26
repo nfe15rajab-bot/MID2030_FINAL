@@ -5,6 +5,7 @@ import { classifyAssemblySustainability } from '../lib/sustainabilityRubric.js'
 import { loadFicheDetail } from '../lib/ficheStorage.js'
 import { getAllMaterials } from '../lib/materialsCatalog.js'
 import { buildLayerCalculationSteps, buildUValueAssemblyStep } from '../lib/calculationNarrative.js'
+import { LCA_MODULES, NORMALIZATION, U_VALUE, GLOSSARY, RSP_YEARS } from '../data/lcaMethodology.js'
 import './A4ReportDraft.css'
 
 function fmt(n, digits = 3) {
@@ -229,13 +230,18 @@ function AssemblySection({ summary }) {
 }
 
 /**
- * The A4 Report Draft — 7 sections per the team's 2026-07-25 report spec:
- * Introduction, Material research by discipline, Assemblies (6, each with
- * layer order + sd/U/GWP + assumptions/references + its own LCA/EPD
- * conclusion), Global LCA, Global EPD, Conclusion, References. Mirrors
- * a4DocxExport.js section-for-section (same underlying data functions —
- * deliverablesData.js, sustainabilityRubric.js) so the on-screen/PDF
- * preview and the exported Word doc never say different things.
+ * The A4 Report Draft — 8 sections, matching the brief's required academic
+ * structure (abstract, introduction, methodology, results, discussion):
+ * Introduction, Methodology (added 2026-07-26 — phase-by-phase EN
+ * 15804/15978 module table + U-value/normalization formulas + glossary,
+ * condensed from src/data/lcaMethodology.js, which also backs the LCA
+ * Methodology tab so the two can't disagree), Material research by
+ * discipline, Assemblies (6, each with layer order + sd/U/GWP +
+ * assumptions/references + its own LCA/EPD conclusion), Global LCA, Global
+ * EPD, Conclusion, References. Mirrors a4DocxExport.js section-for-section
+ * (same underlying data functions — deliverablesData.js,
+ * sustainabilityRubric.js, lcaMethodology.js) so the on-screen/PDF preview
+ * and the exported Word doc never say different things.
  */
 const A4ReportDraft = forwardRef(function A4ReportDraft({ summaries, references }, ref) {
   const withData = summaries.filter((s) => s.hasData)
@@ -283,7 +289,7 @@ const A4ReportDraft = forwardRef(function A4ReportDraft({ summaries, references 
           separately.
         </p>
         <p>
-          As of this draft, {withData.length}/6 assemblies have saved data (see Section 3). U-value
+          As of this draft, {withData.length}/6 assemblies have saved data (see Section 4). U-value
           per DIN EN ISO 6946; A1-A3 = declared GWP unit value × quantity (from each layer's own
           functional unit); A4 per DIN EN ISO 14083, routed manufacturer → Detmold hub → Haarlem using
           real driving distances wherever a route has been fetched, not straight-line estimates; B4
@@ -293,7 +299,60 @@ const A4ReportDraft = forwardRef(function A4ReportDraft({ summaries, references 
       </section>
 
       <section className="a4-report-section">
-        <h2>2. Material Research by Discipline</h2>
+        <h2>2. Methodology</h2>
+        <p>
+          This project follows the EN 15804/15978 lifecycle-module framework specified in the class brief:
+          embodied carbon for the product stage (A1-A3), transport impacts (A4), replacement impacts (B4),
+          operational energy (B6, whole-building), and end-of-life scenarios (C and D stages) — normalized to
+          kg CO₂e/m²/yr over a {RSP_YEARS}-year reference study period. Modules outside this set (A5,
+          B1-B3, B5, B7) exist in the standard but fall outside this assignment's defined system boundary.
+        </p>
+        <div className="a4-report-table-wrapper">
+          <table className="a4-report-table">
+            <thead>
+              <tr><th>Module</th><th>Stage</th><th>Standard</th><th>In scope</th><th>Formula</th></tr>
+            </thead>
+            <tbody>
+              {LCA_MODULES.map((m) => (
+                <tr key={m.code}>
+                  <td>{m.code}</td>
+                  <td>{m.label}</td>
+                  <td>{m.standard}</td>
+                  <td>{m.inScope ? 'Yes' : 'No'}</td>
+                  <td>{m.formula ?? (m.inScope ? 'researched per material (EPD/AI/manual)' : '—')}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <h4>Thermal performance (U-value)</h4>
+        <p>{U_VALUE.standard}: {U_VALUE.formula.split('\n').join(' · ')}.</p>
+        <div className="a4-report-table-wrapper">
+          <table className="a4-report-table">
+            <thead><tr><th>Element</th><th>Rsi (m²K/W)</th><th>Rse (m²K/W)</th></tr></thead>
+            <tbody>
+              {Object.entries(U_VALUE.surfaceResistances).map(([key, r]) => (
+                <tr key={key}><td>{key}</td><td>{r.rsi}</td><td>{r.rse}</td></tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p className="a4-report-note">{U_VALUE.note}</p>
+
+        <h4>Normalization</h4>
+        <p>{NORMALIZATION.formula} ({NORMALIZATION.unit}). {NORMALIZATION.note}</p>
+
+        <h4>Glossary</h4>
+        <ul>
+          {GLOSSARY.map((g) => (
+            <li key={g.term}><strong>{g.name}:</strong> {g.definition}{g.note ? ` ${g.note}` : ''}</li>
+          ))}
+        </ul>
+      </section>
+
+      <section className="a4-report-section">
+        <h2>3. Material Research by Discipline</h2>
         {disciplineGroups.length === 0 ? (
           <p className="a4-report-empty">No materials saved yet in any assembly.</p>
         ) : (
@@ -328,13 +387,13 @@ const A4ReportDraft = forwardRef(function A4ReportDraft({ summaries, references 
       </section>
 
       <section className="a4-report-section">
-        <h2>3. Assemblies</h2>
+        <h2>4. Assemblies</h2>
         <p>Wall, Floor, Roof, Skylight, Window, Door — each with its full layer order, key figures, sourcing, and a sustainability conclusion of the whole assembly (not just one material).</p>
         {orderedAssemblies.map((s) => <AssemblySection key={s.key} summary={s} />)}
       </section>
 
       <section className="a4-report-section">
-        <h2>4. Global LCA</h2>
+        <h2>5. Global LCA</h2>
         <p>{globalLca.assessedAssemblyCount}/{globalLca.totalAssemblyCount} assemblies have saved data and are included in this rollup.</p>
         <div className="a4-report-table-wrapper">
           <table className="a4-report-table">
@@ -386,7 +445,7 @@ const A4ReportDraft = forwardRef(function A4ReportDraft({ summaries, references 
       </section>
 
       <section className="a4-report-section">
-        <h2>5. Global EPD — Provider Concentration</h2>
+        <h2>6. Global EPD — Provider Concentration</h2>
         <p>
           {providerStats.count} active providers plotted against the site: {providerStats.within500}/{providerStats.count} within
           500 km straight-line, {providerStats.within1000}/{providerStats.count} within 1000 km, average{' '}
@@ -408,11 +467,11 @@ const A4ReportDraft = forwardRef(function A4ReportDraft({ summaries, references 
             </tbody>
           </table>
         </div>
-        <p className="a4-report-note">Distance here is straight-line, for a quick concentration read — real routed A4 transport distances are in Sections 3/4 and the Spreadsheet export.</p>
+        <p className="a4-report-note">Distance here is straight-line, for a quick concentration read — real routed A4 transport distances are in Sections 4/5 and the Spreadsheet export.</p>
       </section>
 
       <section className="a4-report-section">
-        <h2>6. Conclusion and Potential Improvements</h2>
+        <h2>7. Conclusion and Potential Improvements</h2>
         <p>
           {withData.length}/6 assemblies are fully modeled with real, sourced data as of this draft (Wall and
           Roof, both this round — Floor/Door/Window/Skylight are still on the original catalog placeholders).
@@ -442,7 +501,7 @@ const A4ReportDraft = forwardRef(function A4ReportDraft({ summaries, references 
       </section>
 
       <section className="a4-report-section">
-        <h2>7. References</h2>
+        <h2>8. References</h2>
         {references.length === 0 ? (
           <p className="a4-report-empty">
             No accepted AI-suggestions or Ökobaudat citations yet — references populate as materials

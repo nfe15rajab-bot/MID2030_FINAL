@@ -219,7 +219,7 @@ function deriveDistanceKm(layer, material) {
 
 // Reference study period — same 50 years already used for the
 // normalized (kg CO2e/m²/yr) total below, per the class brief.
-const REFERENCE_STUDY_PERIOD_YEARS = 50
+export const REFERENCE_STUDY_PERIOD_YEARS = 50
 
 /**
  * B4 (replacement) per layer: replacementCount = CEILING(50/serviceLife) - 1

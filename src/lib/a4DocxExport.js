@@ -108,7 +108,7 @@ function methodologySection() {
       cell(m.label, { width: 28 }),
       cell(m.standard, { width: 18 }),
       cell(m.inScope ? 'Yes' : 'No', { width: 10 }),
-      cell(m.formula ?? (m.inScope ? 'researched per material (EPD/AI/manual)' : '—'), { width: 34 }),
+      cell(m.formula ?? (m.computed ? 'researched per material (EPD/AI/manual)' : m.inScope ? 'discussed qualitatively, not computed' : '—'), { width: 34 }),
     ],
   }))
 
@@ -118,8 +118,10 @@ function methodologySection() {
       'This project follows the EN 15804/15978 lifecycle-module framework specified in the class brief: ' +
       'embodied carbon for the product stage (A1-A3), transport impacts (A4), replacement impacts (B4), ' +
       `operational energy (B6, whole-building), and end-of-life scenarios (C and D stages) — normalized to ` +
-      `kg CO₂e/m²/yr over a ${RSP_YEARS}-year reference study period. Modules outside this set (A5, B1-B3, ` +
-      "B5, B7) exist in the standard but fall outside this assignment's defined system boundary."
+      `kg CO₂e/m²/yr over a ${RSP_YEARS}-year reference study period. B1 (use), B2 (maintenance), B3 (repair), ` +
+      'B5 (refurbishment), and B7 (water use) are in scope for written discussion — see each module\'s own ' +
+      'note below — but deliberately not assigned an invented figure. Module A5 (construction / installation) ' +
+      'is the only module not addressed anywhere in this report.'
     ),
     table(['Module', 'Stage', 'Standard', 'In scope', 'Formula'], moduleRows),
     new Paragraph({ spacing: { after: 160 } }),

@@ -796,12 +796,13 @@ export function generateLcaModuleText(moduleKey, summaries = [], references = []
     case 'PROPOSAL_COMPARISON':
       lines.push(`PROPOSAL MID 2030 REQUIREMENT COMPARISON & COMPLIANCE MATRIX`)
       lines.push(`-----------------------------------------------------------------`)
+      lines.push(`⚠️ PLACEHOLDER FLAGS BELOW: items marked [NOT YET PERFORMED] describe work that has not actually been done in this app or elsewhere on the team — do not cite or submit as complete.\n`)
       lines.push(`Project Brief Alignment Check (Professor's MID 2030 Assignment):`)
       lines.push(`  1. 3D Model & Envelope Development [100% COMPLETE]: Defined 6 complete envelope assemblies (Wall, Floor, Roof, Window, Door, Skylight) for Model 1 (Batavierenplantsoen, Haarlem).`)
-      lines.push(`  2. Material Research & EPD Sourcing [100% COMPLETE]: Integrated Ökobaudat soda4LCA API, cataloged 20+ materials with density ρ, λ, c, μ, and EPD UUIDs. Created Paludi insulation board EPD.`)
-      lines.push(`  3. Thermal Performance & Physics [100% COMPLETE]: Computed layer R-values and assembly U-values (Wall: 0.142 W/m²K, Roof: 0.118 W/m²K) per DIN EN ISO 6946.`)
-      lines.push(`  4. Hygrothermal & Moisture Analysis [DELPHIN 1D CHAPTER INTEGRATED]: Vapour diffusion resistance (sd = μ · d), interstitial condensation risk (Glaser method & Delphin 1D transient simulation).`)
-      lines.push(`  5. Operational Energy & 50-Year Simulation [LADYBUG CHAPTER INTEGRATED]: 50-year RSP dynamic thermal modeling in Ladybug/EnergyPlus (Annual heating: 38.4 kWh/m²/yr, Total operational B6: 44.6 kWh/m²/yr).`)
+      lines.push(`  2. Material Research & EPD Sourcing [100% COMPLETE]: Integrated Ökobaudat soda4LCA API, cataloged 20+ materials with density ρ, λ, c, μ, and EPD UUIDs. Paludi insulation board EPD [NOT YET PERFORMED — a required deliverable per the brief, not started anywhere in the app].`)
+      lines.push(`  3. Thermal Performance & Physics [100% COMPLETE]: Computed layer R-values and assembly U-values per DIN EN ISO 6946 — see the LCA and EPD tab for this project's real, live-computed figures (illustrative example values above are not live data).`)
+      lines.push(`  4. Hygrothermal & Moisture Analysis [NOT YET PERFORMED]: No Delphin, WUFI, or other hygrothermal/moisture simulation exists anywhere in this project — see Chapter 2.1 below, which is placeholder text only.`)
+      lines.push(`  5. Operational Energy & 50-Year Simulation [PARTIALLY BUILT]: Whole-building operational energy (Module B6) IS computed in this app (LCA Summary → Operational Energy settings) from real inputs — but no Ladybug/EnergyPlus dynamic simulation exists; see Chapter 2.2 below, which is placeholder text only.`)
       lines.push(`  6. Life Cycle Assessment A1–A3 [100% COMPLETE]: Cradle-to-gate embodied GWP per material with biogenic carbon sequestration for wood-fiber insulation.`)
       lines.push(`  7. Transportation Logistics A4 [100% COMPLETE]: DIN EN ISO 14083 freight logistics via Detmold hub to Haarlem site with real routed driving distances.`)
       lines.push(`  8. End-of-Life & Circularity C & D [100% COMPLETE]: Demolition (C1), transport (C2), processing (C3), disposal (C4), and circular recycling credits (Module D).`)
@@ -809,6 +810,8 @@ export function generateLcaModuleText(moduleKey, summaries = [], references = []
       break
 
     case 'DELPHIN_MOISTURE':
+      lines.push(`⚠️ PLACEHOLDER CONTENT — NOT A REAL ANALYSIS ⚠️`)
+      lines.push(`No Delphin, WUFI, or any other hygrothermal/moisture simulation has actually been run for this project. Every figure below is illustrative placeholder text, not a verified result — do not cite or submit this section until someone has actually performed this analysis and replaced this text with real findings.\n`)
       lines.push(`CHAPTER 2.1: DELPHIN 1D HYGROTHERMAL & MOISTURE ANALYSIS (DELPHIN 5/6 & WUFI)`)
       lines.push(`-----------------------------------------------------------------`)
       lines.push(`Specialist Team Analysis Focus: Transient 1D heat, air, and moisture transport (HAM) modeling across timber envelope assemblies.`)
@@ -824,6 +827,8 @@ export function generateLcaModuleText(moduleKey, summaries = [], references = []
       break
 
     case 'LADYBUG_ENERGY':
+      lines.push(`⚠️ PLACEHOLDER CONTENT — NOT A REAL ANALYSIS ⚠️`)
+      lines.push(`No Ladybug/Honeybee/EnergyPlus dynamic simulation has actually been run for this project. Every figure below is illustrative placeholder text, not a verified result. This app DOES compute a real whole-building operational energy figure (Module B6 — see LCA Summary → Operational Energy settings), but that is a simple single-factor calculation, not the dynamic 50-year simulation described here — do not cite or submit this section until someone has actually run that analysis and replaced this text with real findings.\n`)
       lines.push(`CHAPTER 2.2: LADYBUG 50-YEAR DYNAMIC ENERGY & THERMAL COMFORT SIMULATION (LADYBUG / HONEYBEE)`)
       lines.push(`-----------------------------------------------------------------`)
       lines.push(`Specialist Team Analysis Focus: 50-Year Reference Study Period (RSP) dynamic building energy simulation using Ladybug Tools (EnergyPlus kernel).`)

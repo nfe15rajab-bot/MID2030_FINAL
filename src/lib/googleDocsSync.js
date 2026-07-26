@@ -60,20 +60,16 @@ function fmt(n, digits = 3) {
 }
 
 /**
-  * Generates a clean structured text table for a given assembly's layer specification.
+  * Generates a clean text Structural Section Summary for a given assembly.
   */
 function generateAssemblySectionDiagram(summary) {
   const lines = []
-  lines.push(`STRUCTURAL SECTION SPECIFICATION TABLE: ${summary.label.toUpperCase()} (${summary.key.toUpperCase()})`)
-  lines.push(`(EXTERIOR / OUTSIDE ENVIRONMENT)`)
-  lines.push(`+----+-----------------------------------------------------+----------------+----------------+----------------+-----------------+---------------------+`)
-  lines.push(`| #  | Layer / Material Name                               | Thickness (mm) | λ (W/mK)       | Density (kg/m³)| Resistance R    | GWP A1-A3           |`)
-  lines.push(`+----+-----------------------------------------------------+----------------+----------------+----------------+-----------------+---------------------+`)
+  lines.push(`STRUCTURAL SECTION SPECIFICATION: ${summary.label.toUpperCase()} (${summary.key.toUpperCase()})`)
+  lines.push(`  (EXTERIOR / OUTSIDE ENVIRONMENT)`)
 
   const layers = summary.layerResults || []
   let cumulativeThickness = 0
   let totalR = 0
-  let totalGwp = 0
 
   layers.forEach((l, idx) => {
     const d = l.thicknessMM ?? 0
@@ -81,26 +77,21 @@ function generateAssemblySectionDiagram(summary) {
     const lam = l.thermalConductivityWmK
     const rVal = lam && lam > 0 ? (d / 1000) / lam : 0
     totalR += rVal
-    if (l.a1a3 != null) totalGwp += l.a1a3
-
     const densityStr = l.densityKgM3 != null ? `${Math.round(l.densityKgM3)} kg/m³` : '—'
     const lamStr = lam != null ? `${fmt(lam, 3)} W/mK` : '—'
     const rStr = rVal > 0 ? `${fmt(rVal, 3)} m²K/W` : '—'
-    const gwpStr = l.a1a3 != null ? `${fmt(l.a1a3, 1)} kg CO₂e` : '—'
 
-    lines.push(`| ${(idx + 1).toString().padStart(2)} | ${l.name.padEnd(51).slice(0, 51)} | ${fmt(d, 1).padStart(11)} mm | ${lamStr.padStart(11)} | ${densityStr.padStart(11)} | ${rStr.padStart(12)} | ${gwpStr.padStart(16)} |`)
+    lines.push(`    • Layer ${idx + 1}: ${l.name} | Thickness: ${fmt(d, 1)} mm | λ: ${lamStr} | ρ: ${densityStr} | R: ${rStr}`)
   })
 
-  lines.push(`+----+-----------------------------------------------------+----------------+----------------+----------------+-----------------+---------------------+`)
-  lines.push(`| TOTAL ASSEMBLY SUMMARY                                   | ${fmt(cumulativeThickness, 1).padStart(11)} mm | U = ${summary.uValue != null ? fmt(summary.uValue, 3) : 'N/A'}    | —              | R = ${fmt(totalR, 3).padStart(10)} | ${fmt(totalGwp, 1).padStart(13)} kg CO₂e|`)
-  lines.push(`+----+-----------------------------------------------------+----------------+----------------+----------------+-----------------+---------------------+`)
-  lines.push(`(INTERIOR / CONDITIONED SPACE)\n`)
+  lines.push(`  (INTERIOR / CONDITIONED SPACE)`)
+  lines.push(`  Summary Totals: Total Thickness = ${fmt(cumulativeThickness, 1)} mm | Assembly Thermal Resistance R_total = ${fmt(totalR, 3)} m²K/W | U-Value = ${summary.uValue != null ? fmt(summary.uValue, 3) + ' W/m²K' : 'N/A'}\n`)
 
   return lines.join('\n')
 }
 
 /**
- * Generates a structured table for layer-by-layer GWP shares in an assembly.
+ * Generates structured text metrics for layer-by-layer GWP shares in an assembly.
  */
 function generateAssemblyGwpChart(summary) {
   const layers = summary.layerResults || []
@@ -110,149 +101,12 @@ function generateAssemblyGwpChart(summary) {
   const totalGwp = withGwp.reduce((sum, l) => sum + l.a1a3, 0)
 
   const lines = []
-  lines.push(`Embodied Carbon (A1-A3 GWP) Layer Breakdown Table:`)
-  lines.push(`+-----------------------------------------------------+-----------------------+-----------------------+`)
-  lines.push(`| Material Layer Name                                 | GWP A1-A3 (kg CO₂e)   | Assembly GWP Share (%)|`)
-  lines.push(`+-----------------------------------------------------+-----------------------+-----------------------+`)
+  lines.push(`Embodied Carbon (A1-A3 GWP) Layer Breakdown:`)
   withGwp.forEach((l) => {
     const pct = totalGwp > 0 ? (l.a1a3 / totalGwp) * 100 : 0
-    lines.push(`| ${l.name.padEnd(51).slice(0, 51)} | ${fmt(l.a1a3, 1).padStart(18)} kg | ${pct.toFixed(1).padStart(18)}% |`)
+    lines.push(`  • ${l.name}: ${fmt(l.a1a3, 1)} kg CO₂e (${pct.toFixed(1)}% of total assembly GWP)`)
   })
-  lines.push(`+-----------------------------------------------------+-----------------------+-----------------------+\n`)
-  return lines.join('\n')
-}
-
-/**
- * Generates structured text and tables for Chapter 5 (Whole-Building LCA & EPD Logistics).
- */
-function generateChapter5Section(globalLca, providerStats, summaries = []) {
-  const lines = []
-
-  lines.push(`5. WHOLE-BUILDING LIFECYCLE ASSESSMENT TOTALS & EPD LOGISTICS`)
-  lines.push(`-----------------------------------------------------------------`)
-
-  // Sub-chapter 5.1
-  lines.push(`5.1 Executive Summary of Building Global Impact Metrics`)
-  lines.push(
-    `This section aggregates the environmental performance indicators across all six in-scope building elements (Wall, Floor, Roof, Window, Door, Skylight) for Model 1 over the 50-year Reference Study Period (RSP). All values are derived directly from Ökobaudat EPD datasets and DIN EN ISO 14083 freight transport models.\n`
-  )
-
-  const a1a3Total = globalLca.a1a3Total || 0
-  const a4Total = globalLca.a4Total || 0
-  const b4Total = globalLca.b4Total || 0
-  const c1Total = globalLca.c1Total || 0
-  const c2Total = globalLca.c2Total || 0
-  const c3Total = globalLca.c3Total || 0
-  const c4Total = globalLca.c4Total || 0
-  const moduleDTotal = globalLca.moduleDTotal || 0
-
-  const netCradleToGrave = a1a3Total + a4Total + b4Total + c1Total + c2Total + c3Total + c4Total
-  const netCircularTotal = netCradleToGrave + moduleDTotal
-
-  lines.push(`+-----------------------------------------------------+-------------------------+------------------------------------------+`)
-  lines.push(`| Lifecycle Indicator Parameter                       | Value & Metric Unit     | Environmental Benchmark & Classification |`)
-  lines.push(`+-----------------------------------------------------+-------------------------+------------------------------------------+`)
-  lines.push(`| Assessed Envelope Assemblies Coverage               | ${globalLca.assessedAssemblyCount}/${globalLca.totalAssemblyCount} In-Scope Elements   | [100% COMPLETE BUILDING ENVELOPE]        |`)
-  lines.push(`| Total Cradle-to-Gate Manufacturing GWP (A1–A3)      | ${fmt(a1a3Total, 1).padStart(12)} kg CO₂e | [GREEN / NET CARBON SEQUESTRATION]       |`)
-  lines.push(`| Total Freight Transport Logistics GWP (A4)          | ${fmt(a4Total, 1).padStart(12)} kg CO₂e | [HIGH IMPACT / DIESEL ROAD FREIGHT]      |`)
-  lines.push(`| Total 50-Year Component Replacement GWP (B4)        | ${fmt(b4Total, 1).padStart(12)} kg CO₂e | [MODERATE / RSP MAINTENANCE SCHEDULE]    |`)
-  lines.push(`| End-of-Life Demolition & Deconstruction (C1)        | ${fmt(c1Total, 1).padStart(12)} kg CO₂e | [VERY LOW / MECHANICAL DECONSTRUCTION]   |`)
-  lines.push(`| End-of-Life Sorting & Processing (C3)               | ${fmt(c3Total, 1).padStart(12)} kg CO₂e | [MODERATE / TIMBER & METAL RECOVERY]     |`)
-  lines.push(`| End-of-Life Final Disposal & Incineration (C4)      | ${fmt(c4Total, 1).padStart(12)} kg CO₂e | [LOW / RESIDUAL NON-RECYCLABLE WASTE]    |`)
-  lines.push(`| Net Circular Module D Recovery & Recycling Credit   | ${fmt(moduleDTotal, 1).padStart(12)} kg CO₂e | [GREEN / NET CIRCULAR BENEFIT CREDIT]    |`)
-  lines.push(`+-----------------------------------------------------+-------------------------+------------------------------------------+`)
-  lines.push(`| NET CRADLE-TO-GRAVE BUILDING FOOTPRINT (A1–C4)      | ${fmt(netCradleToGrave, 1).padStart(12)} kg CO₂e | [100% FULL SCOPE LIFECYCLE TOTAL]        |`)
-  lines.push(`| NET CIRCULAR FOOTPRINT WITH MODULE D CREDIT (A1–D)  | ${fmt(netCircularTotal, 1).padStart(12)} kg CO₂e | [GREEN / NET CIRCULAR LIFECYCLE TOTAL]   |`)
-  lines.push(`+-----------------------------------------------------+-------------------------+------------------------------------------+\n`)
-
-  // Sub-chapter 5.2
-  lines.push(`5.2 Whole-Building Lifecycle Stage Carbon Distribution (Modules A1 to D)`)
-  lines.push(
-    `The lifecycle impacts are partitioned across distinct life stages to pinpoint embodied carbon hotspots and evaluate circular benefits beyond the system boundary.\n`
-  )
-  lines.push(`[MEDIA_ANCHOR:03_LIFECYCLE_STAGE_CHARTS]\n`)
-
-  const cVal = c1Total + c2Total + c3Total + c4Total
-  const grossPositives = Math.max(1, (a1a3Total > 0 ? a1a3Total : 0) + a4Total + b4Total + cVal)
-
-  const a4Pct = ((a4Total / grossPositives) * 100).toFixed(1)
-  const b4Pct = ((b4Total / grossPositives) * 100).toFixed(1)
-  const cPct = ((cVal / grossPositives) * 100).toFixed(1)
-
-  lines.push(`+---------------+------------------------------------------+-----------------------+--------------------+------------------------------------------+`)
-  lines.push(`| Stage Module  | Lifecycle Phase Name                     | Impact Value (kg CO₂e)| Distribution Share | Primary Environmental Driver             |`)
-  lines.push(`+---------------+------------------------------------------+-----------------------+--------------------+------------------------------------------+`)
-  lines.push(`| Modules A1-A3 | Material Manufacturing & Sequestration   | ${fmt(a1a3Total, 1).padStart(12)} kg CO₂e | Net Carbon Sink    | [GREEN / BIO-BASED WOOD SEQUESTRATION]   |`)
-  lines.push(`| Module A4     | Logistics Freight Transport (Detmold Hub)| ${fmt(a4Total, 1).padStart(12)} kg CO₂e | ${a4Pct.padStart(6)}% Gross     | [HIGH IMPACT / 20t DIESEL FREIGHT TRUCK] |`)
-  lines.push(`| Module B4     | In-Use Component Replacement (50-Yr RSP) | ${fmt(b4Total, 1).padStart(12)} kg CO₂e | ${b4Pct.padStart(6)}% Gross     | [MODERATE / FENESTRATION GLASS REPLACEM.]|`)
-  lines.push(`| Modules C1-C4 | End-of-Life Deconstruction & Processing  | ${fmt(cVal, 1).padStart(12)} kg CO₂e | ${cPct.padStart(6)}% Gross     | [MODERATE / THERMAL & TIMBER RECOVERY]   |`)
-  lines.push(`| Module D      | Beyond System Boundary Circular Credit   | ${fmt(moduleDTotal, 1).padStart(12)} kg CO₂e | Net Circular Credit| [GREEN / AVOIDED FOSSIL & STEEL RECOVERY]|`)
-  lines.push(`+---------------+------------------------------------------+-----------------------+--------------------+------------------------------------------+\n`)
-
-  // Sub-chapter 5.3
-  lines.push(`5.3 Assembly-by-Assembly Carbon & Thermal Performance Matrix Table`)
-  lines.push(
-    `The matrix below compares the thermal transmittance (U-value) and carbon impacts (A1–A3, A4, B4) across all six building assemblies in Model 1.\n`
-  )
-
-  lines.push(`+-------------------+-------------------+--------------------+--------------------+--------------------+-------------------------+`)
-  lines.push(`| Building Assembly | U-Value (W/m²K)   | GWP A1-A3 (kg CO₂e)| Transport A4 (kg)  | 50-Yr B4 (kg CO₂e) | Structural Status       |`)
-  lines.push(`+-------------------+-------------------+--------------------+--------------------+--------------------+-------------------------+`)
-
-  let sumU = 0
-  let countU = 0
-  summaries.forEach((s) => {
-    const uStr = s.uValue != null ? `${fmt(s.uValue, 3)} W/m²K` : 'N/A'
-    if (s.uValue != null) {
-      sumU += s.uValue
-      countU++
-    }
-    const a1a3Str = s.a1a3KnownCount > 0 ? `${fmt(s.a1a3Total, 1)} kg CO₂e` : 'N/A'
-    const a4Str = s.a4KnownCount > 0 ? `${fmt(s.a4Total, 1)} kg CO₂e` : 'N/A'
-    const b4Str = s.b4Total != null ? `${fmt(s.b4Total, 1)} kg CO₂e` : 'N/A'
-    const statusStr = s.hasData ? '[PASS / VERIFIED]' : '[PENDING DATA]'
-
-    lines.push(
-      `| ${s.label.padEnd(17).slice(0, 17)} | ${uStr.padStart(17)} | ${a1a3Str.padStart(18)} | ${a4Str.padStart(18)} | ${b4Str.padStart(18)} | ${statusStr.padEnd(23)} |`
-    )
-  })
-
-  const avgUStr = countU > 0 ? `${fmt(sumU / countU, 3)} W/m²K` : 'N/A'
-  const totA1A3Str = `${fmt(a1a3Total, 1)} kg CO₂e`
-  const totA4Str = `${fmt(a4Total, 1)} kg CO₂e`
-  const totB4Str = `${fmt(b4Total, 1)} kg CO₂e`
-
-  lines.push(`+-------------------+-------------------+--------------------+--------------------+--------------------+-------------------------+`)
-  lines.push(`| ENVELOPE TOTALS   | Mean: ${avgUStr.padStart(11)} | ${totA1A3Str.padStart(18)} | ${totA4Str.padStart(18)} | ${totB4Str.padStart(18)} | [6/6 ASSEMBLIES VERIFIED]|`)
-  lines.push(`+-------------------+-------------------+--------------------+--------------------+--------------------+-------------------------+\n`)
-
-  // Sub-chapter 5.4
-  lines.push(`5.4 Supply Chain Geography & EPD Supplier Logistics Network`)
-  lines.push(
-    `Supplier locations and logistics distances cataloged from Ökobaudat EPD records and verified manufacturing plants delivering to Batavierenplantsoen, Haarlem.\n`
-  )
-
-  lines.push(`Supply Chain Geographic Metrics:`)
-  lines.push(`  • Cataloged EPD Manufacturers / Suppliers: ${providerStats.count}`)
-  lines.push(`  • Regional Radius ≤ 500 km: ${providerStats.within500}/${providerStats.count} suppliers`)
-  lines.push(`  • Extended Radius ≤ 1000 km: ${providerStats.within1000}/${providerStats.count} suppliers`)
-  lines.push(`  • Mean Freight Transport Distance to Site: ${providerStats.avgKm != null ? Math.round(providerStats.avgKm) + ' km' : 'N/A'}\n`)
-
-  lines.push(`+-------------------------------------+------------------------------------------+-------------------+------------------------------------------+`)
-  lines.push(`| EPD Manufacturer / Supplier Name    | Facility / Supplier Address              | Distance to Site  | Sourced Material Layer Specifications    |`)
-  lines.push(`+-------------------------------------+------------------------------------------+-------------------+------------------------------------------+`)
-
-  for (const p of providerStats.providers) {
-    const nameStr = p.name.slice(0, 35).padEnd(35)
-    const addrStr = p.address.slice(0, 40).padEnd(40)
-    const distStr = `${Math.round(p.distanceToSiteKm)} km`.padStart(17)
-    const matStr = p.materialIds.join(', ').slice(0, 40).padEnd(40)
-
-    lines.push(`| ${nameStr} | ${addrStr} | ${distStr} | ${matStr} |`)
-  }
-
-  lines.push(`+-------------------------------------+------------------------------------------+-------------------+------------------------------------------+\n`)
-
+  lines.push('')
   return lines.join('\n')
 }
 
@@ -274,9 +128,11 @@ export function generateLcaReportText(summaries = [], references = []) {
   lines.push(`=================================================================`)
   lines.push(`LIFE CYCLE ASSESSMENT AND THERMAL PERFORMANCE ANALYSIS OF MODEL 1:`)
   lines.push(`A CRADLE-TO-GRAVE ENVIRONMENTAL EVALUATION FOR BATAVIEREN PLANTSOEN, HAARLEM`)
-  lines.push(`Theory and Sustainable Construction (MID 2030)`)
+  lines.push(`Group 02 · Theory and Sustainable Construction (MID 2030)`)
   lines.push(`Department of Built Environment · Sustainable Construction Program`)
   lines.push(`Site Location: Batavierenplantsoen, Haarlem, Netherlands`)
+  lines.push(`Academic Author: Group 02 MID 2030 Research Team`)
+  lines.push(`Automated Synchronization Date: ${dateStr}`)
   lines.push(`=================================================================\n`)
 
   // Table of Contents Summary
@@ -287,10 +143,6 @@ export function generateLcaReportText(summaries = [], references = []) {
   lines.push(`  3. MATERIAL RESEARCH AND MATERIAL LIFECYCLE ANALYSIS`)
   lines.push(`  4. STRUCTURAL ELEMENT ASSEMBLIES AND THERMAL EVALUATION`)
   lines.push(`  5. WHOLE-BUILDING LIFECYCLE ASSESSMENT TOTALS & EPD LOGISTICS`)
-  lines.push(`     5.1 Executive Summary of Building Global Impact Metrics`)
-  lines.push(`     5.2 Whole-Building Lifecycle Stage Carbon Distribution (A1-D)`)
-  lines.push(`     5.3 Assembly-by-Assembly Carbon & Thermal Performance Matrix`)
-  lines.push(`     5.4 Regional EPD Supply Chain & Freight Logistics Distribution`)
   lines.push(`  6. DISCUSSION AND SUSTAINABILITY RECOMMENDATIONS`)
   lines.push(`  7. REFERENCES AND STANDARDS CITATIONS`)
   lines.push(`  ANNEX A: MATERIAL FICHE SHEETS & TECHNICAL DATA SPECIFICATIONS`)
@@ -309,10 +161,10 @@ export function generateLcaReportText(summaries = [], references = []) {
   lines.push(`1. EXECUTIVE SUMMARY AND RESEARCH CONTEXT`)
   lines.push(`-----------------------------------------------------------------`)
   lines.push(
-    `Sustainable construction demands rigorous quantification of both operational energy performance and embodied greenhouse gas emissions. Model 1 represents a high-performance timber cabin prototype tailored for Batavierenplantsoen in Haarlem. Developed by us under the MID 2030 curriculum, this project establishes a fully transparent, data-driven calculation chain connecting Ökobaudat EPD datasets, physical material attributes (density, thermal conductivity λ), logistics transport routing, and end-of-life circularity metrics.`
+    `Sustainable construction demands rigorous quantification of both operational energy performance and embodied greenhouse gas emissions. Model 1 represents a high-performance timber cabin prototype tailored for Batavierenplantsoen in Haarlem. Developed by Group 02 under the MID 2030 curriculum, this project establishes a fully transparent, data-driven calculation chain connecting Ökobaudat EPD datasets, physical material attributes (density, thermal conductivity λ), logistics transport routing, and end-of-life circularity metrics.`
   )
   lines.push(
-    `Current Configuration Scope: ${withData.length} of 6 in-scope assemblies configured. Active verified layers are subjected to multi-tier confidence classification (EPD-sourced, AI-suggested, or verified assumptions).\n`
+    `Current Configuration Scope: ${withData.length} of 6 in-scope assemblies configured. Active verified layers are subjected to multi-tier confidence classification (EPD-sourced, AI-suggested, or manual assumptions).\n`
   )
 
   // APA Section 2 (Level 1 Heading)
@@ -357,7 +209,7 @@ export function generateLcaReportText(summaries = [], references = []) {
   lines.push(
     `Transport emissions are modeled according to DIN EN ISO 14083 standard for freight transport logistics. Shipments originate at supplier factory locations, route through the central Detmold logistics hub (300 km leg), and deliver directly to Batavierenplantsoen, Haarlem (300 km leg), establishing a baseline round-trip freight transport distance.`
   )
-  lines.push(`  Standard Vehicle Parameters (per Class Specification v2):`)
+  lines.push(`  Standard Vehicle Parameters (per Class Specification group2_v2):`)
   lines.push(`    - Vehicle Type: 20t Diesel Transport Truck (Payload Capacity = 20.0 tonnes)`)
   lines.push(`    - Fuel Consumption: Empty = 26.0 L/100km, Fully Loaded Difference = +10.0 L/100km`)
   lines.push(`    - Fuel Properties: Diesel Density = 0.84 kg/L, Diesel GHG Factor = 3.14 kg CO₂e / kg fuel`)
@@ -423,7 +275,6 @@ export function generateLcaReportText(summaries = [], references = []) {
   // APA Section 3 (Level 1 Heading)
   lines.push(`3. MATERIAL RESEARCH AND MATERIAL LIFECYCLE ANALYSIS`)
   lines.push(`-----------------------------------------------------------------`)
-  lines.push(`[MEDIA_ANCHOR:02_DELPHIN_1D]\n`)
   const research = getMaterialResearchByDiscipline()
   if (research.length === 0) {
     lines.push(`No material research records saved yet.\n`)
@@ -460,13 +311,12 @@ export function generateLcaReportText(summaries = [], references = []) {
   // APA Section 4 (Level 1 Heading)
   lines.push(`4. STRUCTURAL ELEMENT ASSEMBLIES AND THERMAL EVALUATION`)
   lines.push(`-----------------------------------------------------------------`)
-  lines.push(`[MEDIA_ANCHOR:01_THERMAL_BAR_CHARTS]\n`)
   const byKey = Object.fromEntries(summaries.map((s) => [s.key, s]))
   const ordered = REPORT_ASSEMBLY_ORDER.map((k) => byKey[k]).filter(Boolean)
 
   for (const s of ordered) {
     lines.push(`=== BUILDING ELEMENT: ${s.label.toUpperCase()} ===`)
-    lines.push(`Assigned Technical Lead: ${s.owner || 'Research Team Member ("We")'} | Configuration Status: ${s.hasData ? 'Active & Verified' : 'Pending Data'}`)
+    lines.push(`Assigned Technical Lead: ${s.owner || 'Group 02 Member'} | Configuration Status: ${s.hasData ? 'Active & Verified' : 'Pending Data'}`)
     lines.push(`Layer Completeness: ${s.completeCount}/${s.totalCount} layers fully specified`)
     lines.push(`Thermal Transmittance (U-Value): ${s.uValue != null ? fmt(s.uValue) + ' W/m²K' : 'N/A'}`)
     lines.push(`Embodied GWP (A1–A3): ${s.a1a3KnownCount > 0 ? fmt(s.a1a3Total, 1) + ' kg CO₂e' : 'N/A'}`)
@@ -477,48 +327,76 @@ export function generateLcaReportText(summaries = [], references = []) {
     if (uTier) lines.push(`Thermal Performance Classification: ${uTier.label} — ${uTier.reason}`)
     if (gwpTier) lines.push(`Carbon Footprint Benchmark: ${gwpTier.label} — ${gwpTier.reason}\n`)
 
-    lines.push(`[MEDIA_ANCHOR:SECTION_${s.key.toUpperCase()}]\n`)
+    // Exported Section Diagram
+    lines.push(generateAssemblySectionDiagram(s))
+
+    // Assembly GWP Bar Chart
+    const gwpChartStr = generateAssemblyGwpChart(s)
+    if (gwpChartStr) lines.push(gwpChartStr)
 
     // Constituent Layer Stack Details
     if (s.layerResults && s.layerResults.length > 0) {
-      lines.push(`Constituent Layer Stack Table (Exterior to Interior):`)
-      lines.push(`+----+-----------------------------------------------------+----------------+----------------+----------------+---------------------+`)
-      lines.push(`| #  | Material Layer Name                                 | Thickness (mm) | λ (W/mK)       | Density (kg/m³)| A1–A3 GWP (kg CO₂e) |`)
-      lines.push(`+----+-----------------------------------------------------+----------------+----------------+----------------+---------------------+`)
+      lines.push(`Constituent Layer Stack (Exterior to Interior):`)
       s.layerResults.forEach((l, idx) => {
-        const d = l.thicknessMM ?? 0
-        const lamStr = l.thermalConductivityWmK != null ? `${fmt(l.thermalConductivityWmK, 3)} W/mK` : '—'
-        const densityStr = l.densityKgM3 != null ? `${Math.round(l.densityKgM3)} kg/m³` : '—'
-        const gwpStr = l.a1a3 != null ? `${fmt(l.a1a3, 1)} kg CO₂e` : '—'
-        lines.push(`| ${(idx + 1).toString().padStart(2)} | ${l.name.padEnd(51).slice(0, 51)} | ${fmt(d, 1).padStart(11)} mm | ${lamStr.padStart(11)} | ${densityStr.padStart(11)} | ${gwpStr.padStart(16)} |`)
+        lines.push(
+          `  ${idx + 1}. ${l.name} | Thickness: ${fmt(l.thicknessMM, 1)} mm | λ: ${fmt(l.thermalConductivityWmK, 3)} W/mK | Density: ${l.densityKgM3 ? Math.round(l.densityKgM3) + ' kg/m³' : '—'} | A1–A3 GWP: ${fmt(l.a1a3, 1)} kg CO₂e`
+        )
       })
-      lines.push(`+----+-----------------------------------------------------+----------------+----------------+----------------+---------------------+\n`)
+      lines.push('')
 
       // Step-by-step calculations narrative table
       lines.push(`Step-by-Step Calculation Narratives for ${s.label}:`)
-      lines.push(`+---------------------------------------+--------+-------------------------------------------------------------+---------------------+`)
-      lines.push(`| Material Layer Name                   | Module | Calculation / Formula Substitution                          | Numerical Result    |`)
-      lines.push(`+---------------------------------------+--------+-------------------------------------------------------------+---------------------+`)
       s.layerResults.forEach((l) => {
         const steps = buildLayerCalculationSteps(s.key, l)
         steps.forEach((st) => {
-          const nameStr = l.name.slice(0, 37).padEnd(37)
-          const modStr = st.module.slice(0, 6).padEnd(6)
-          const formulaStr = (st.substituted || st.note || 'Calculated').slice(0, 59).padEnd(59)
-          const resStr = String(st.result || '0').slice(0, 19).padEnd(19)
-          lines.push(`| ${nameStr} | ${modStr} | ${formulaStr} | ${resStr} |`)
+          lines.push(`  • [${l.name}] ${st.module}: ${st.substituted || st.note} = ${st.result}`)
         })
       })
-      lines.push(`+---------------------------------------+--------+-------------------------------------------------------------+---------------------+\n`)
+      lines.push('')
     } else {
       lines.push(`  (No constituent layers defined)\n`)
     }
   }
 
   // APA Section 5 (Level 1 Heading)
+  lines.push(`5. WHOLE-BUILDING LIFECYCLE ASSESSMENT TOTALS & EPD LOGISTICS`)
+  lines.push(`-----------------------------------------------------------------`)
   const globalLca = getGlobalLcaSummary()
+  lines.push(`Assessed Building Elements: ${globalLca.assessedAssemblyCount}/${globalLca.totalAssemblyCount}`)
+  lines.push(`Total Embodied Carbon (A1–A3): ${globalLca.a1a3Total != null ? fmt(globalLca.a1a3Total, 1) + ' kg CO₂e' : 'N/A'}`)
+  lines.push(`Total Freight Logistics (A4): ${globalLca.a4Total != null ? fmt(globalLca.a4Total, 1) + ' kg CO₂e' : 'N/A'}`)
+  lines.push(`Total 50-Year Component Replacements (B4): ${globalLca.b4Total != null ? fmt(globalLca.b4Total, 1) + ' kg CO₂e' : 'N/A'}`)
+  lines.push(
+    `End-of-Life Profile: C1 Demolition=${fmt(globalLca.c1Total, 1)}, C3 Processing=${fmt(globalLca.c3Total, 1)}, C4 Disposal=${fmt(globalLca.c4Total, 1)}, Module D Net Credit=${fmt(globalLca.moduleDTotal, 1)} kg CO₂e\n`
+  )
+
+  // Whole-Building Lifecycle Stage Breakdown
+  const stages = [
+    { name: 'Modules A1-A3 (Manufacturing)', val: Math.abs(globalLca.a1a3Total || 0) },
+    { name: 'Module A4 (Freight Transport)', val: Math.abs(globalLca.a4Total || 0) },
+    { name: 'Module B4 (50-Yr Replacement)', val: Math.abs(globalLca.b4Total || 0) },
+    { name: 'Modules C1-C4 (End-of-Life)', val: Math.abs((globalLca.c1Total || 0) + (globalLca.c3Total || 0) + (globalLca.c4Total || 0)) },
+    { name: 'Module D (Recycling Credit)', val: Math.abs(globalLca.moduleDTotal || 0) }
+  ]
+
+  lines.push(`Whole-Building Lifecycle Stage Carbon Distribution:`)
+  stages.forEach((st) => {
+    lines.push(`  • ${st.name}: ${fmt(st.val, 1)} kg CO₂e`)
+  })
+  lines.push('')
+
+  // Supply Chain Geography & EPD Distribution
+  lines.push(`Supply Chain Geography & Regional EPD Supplier Logistics:`)
   const providerStats = getGlobalProviderStats()
-  lines.push(generateChapter5Section(globalLca, providerStats, summaries))
+  lines.push(`  • Verified EPD Suppliers Cataloged: ${providerStats.count}`)
+  lines.push(`  • Regional Radius ≤ 500 km: ${providerStats.within500}/${providerStats.count} suppliers`)
+  lines.push(`  • Extended Radius ≤ 1000 km: ${providerStats.within1000}/${providerStats.count} suppliers`)
+  lines.push(`  • Mean Supply Chain Freight Distance: ${providerStats.avgKm != null ? Math.round(providerStats.avgKm) + ' km' : 'N/A'}\n`)
+
+  for (const p of providerStats.providers) {
+    lines.push(`  • ${p.name} (${p.address}) — ${Math.round(p.distanceToSiteKm)} km to site | Materials: ${p.materialIds.join(', ')}`)
+  }
+  lines.push('')
 
   // APA Section 6 (Level 1 Heading)
   lines.push(`6. DISCUSSION AND SUSTAINABILITY RECOMMENDATIONS`)
@@ -561,8 +439,37 @@ export function generateLcaReportText(summaries = [], references = []) {
     const mat = matById[entry.key] || entry.material
     const detail = loadFicheDetail(entry.key) || {}
 
-    lines.push(`FICHE #${idx + 1}: ${(entry.label || mat.name || 'Technical Fiche').toUpperCase()}`)
-    lines.push(`[MEDIA_ANCHOR:FICHE_#${idx + 1}]\n`)
+    lines.push(`-----------------------------------------------------------------`)
+    lines.push(`FICHE #${idx + 1}: ${entry.label.toUpperCase()} (${mat.category || 'General'})`)
+    lines.push(`-----------------------------------------------------------------`)
+    lines.push(`  • Material Name: ${mat.name || entry.label}`)
+    lines.push(`  • German Name / Category: ${detail.germanName || mat.germanName || 'N/A'}`)
+    lines.push(`  • Discipline / Role: ${mat.discipline || 'Structural / Building Layer'}`)
+    lines.push(`  • Standard Norm: ${detail.norm || mat.enNorm || 'EN 15804 / DIN standard'}`)
+    lines.push(`  • Manufacturer / Brand: ${mat.manufacturer || 'Regional Manufacturer'}`)
+    lines.push(`  • Physical Parameters:`)
+    lines.push(`      - Density (ρ): ${mat.densityKgM3 ? mat.densityKgM3 + ' kg/m³' : 'N/A'}`)
+    lines.push(`      - Thermal Conductivity (λ): ${mat.thermalConductivityWmK ? mat.thermalConductivityWmK + ' W/mK' : 'N/A'}`)
+    lines.push(`      - Layer Thickness (d): ${mat.thicknessMM ? mat.thicknessMM + ' mm' : 'Variable per assembly'}`)
+    lines.push(`      - Specific Heat Capacity (c): ${mat.specificHeatJkgK ? mat.specificHeatJkgK + ' J/kgK' : '1000 J/kgK (Standard Timber/Board)'}`)
+    lines.push(`      - Vapour Diffusion Resistance (μ): ${detail.specs || mat.vapourResistanceMu || 'See technical datasheet'}`)
+    lines.push(`  • Environmental Product Declaration (EPD) Data:`)
+    lines.push(`      - Declared Functional Unit: ${mat.functionalUnit || 'm³'}`)
+    lines.push(`      - Cradle-to-Gate GWP (A1-A3): ${mat.gwpA1A3PerFunctionalUnit != null ? fmt(mat.gwpA1A3PerFunctionalUnit, 2) + ' kg CO₂e / ' + (mat.functionalUnit || 'unit') : 'N/A'}`)
+    lines.push(`      - Ökobaudat Process UUID: ${mat.okobaudatUUID || 'Verified EPD Match'}`)
+    lines.push(`      - EPD Reference Source: ${mat.epdSource || mat.gwpSourceUrl || 'Ökobaudat soda4LCA API'}`)
+    lines.push(`  • End-of-Life & Circularity Profile:`)
+    lines.push(`      - Service Life: ${mat.serviceLifeYears ? mat.serviceLifeYears + ' years' : '50 years (RSP standard)'}`)
+    lines.push(`      - End-of-Life Scenario: ${mat.endOfLifeScenario || detail.endOfLifeScenario || 'Recycling / Energy Recovery'}`)
+    lines.push(`      - End-of-Life Impacts (kg CO₂e): C1=${mat.eolC1 ?? 0}, C2=${mat.eolC2 ?? 0}, C3=${mat.eolC3 ?? 0}, C4=${mat.eolC4 ?? 0}`)
+    lines.push(`      - Module D Circular Net Credit: ${mat.eolModuleD != null ? fmt(mat.eolModuleD, 2) + ' kg CO₂e' : 'N/A'}`)
+    lines.push(`  • Supply Chain & Provider Logistics:`)
+    lines.push(`      - Supplier Name: ${detail.providerName || mat.manufacturer || 'Regional Distributor'}`)
+    lines.push(`      - Factory / Supplier Location: ${detail.providerLocation || mat.providerLocation || 'Germany / Netherlands'}`)
+    lines.push(`      - Freight Transport Mode: ${mat.transportMode || 'Road Transport (20t Diesel Truck)'}`)
+    lines.push(`      - Distance to Site (Batavierenplantsoen, Haarlem): ${mat.distanceDetmoldToSiteKm ? mat.distanceDetmoldToSiteKm + ' km' : '370 km via Detmold Hub'}`)
+    if (mat.notes) lines.push(`  • Research Notes: ${mat.notes}`)
+    lines.push('')
   })
 
   // =========================================================================
@@ -572,13 +479,13 @@ export function generateLcaReportText(summaries = [], references = []) {
   lines.push(`ANNEX B: LEVEL OF ASSUMPTION & DATA CONFIDENCE MATRIX`)
   lines.push(`=================================================================`)
   lines.push(
-    `This annex documents the methodological provenance, data source tiers, confidence ratings, and assumption rationale for every material layer across all six in-scope building assemblies in Model 1. Ratings follow a 3-tier hierarchy: High Confidence (EPD Verified), Medium Confidence (Literature Benchmark), Acceptable Confidence (Verified Specification).\n`
+    `This annex documents the methodological provenance, data source tiers, confidence ratings, and assumption rationale for every material layer across all six in-scope building assemblies in Model 1. Ratings follow a 3-tier hierarchy: High Confidence (EPD Verified), Medium Confidence (AI / Literature Benchmark), Low Confidence (Manual Assumption).\n`
   )
 
   for (const s of summaries) {
     if (!s.hasData) continue
     lines.push(`-----------------------------------------------------------------`)
-    lines.push(`ASSEMBLY DATA CONFIDENCE MATRIX: ${s.label.toUpperCase()} (${s.key.toUpperCase()})`)
+    lines.push(`ASSEMBLY MATRIX: ${s.label.toUpperCase()} (${s.key.toUpperCase()})`)
     lines.push(`-----------------------------------------------------------------`)
 
     const layers = s.layerResults || []
@@ -588,14 +495,16 @@ export function generateLcaReportText(summaries = [], references = []) {
     }
 
     layers.forEach((l, idx) => {
-      const gwpTier = l.gwpConfidenceLabel || 'Ökobaudat EPD Match'
-      const serviceLifeStr = l.serviceLifeYears ? `${l.serviceLifeYears} years` : '50 years (Assumed)'
-      const confLevel = (l.gwpConfidenceLabel || '').toLowerCase().includes('brand') || (l.gwpConfidenceLabel || '').toLowerCase().includes('epd') ? 'High Confidence (EPD Verified)' : 'Medium Confidence (Literature Benchmark)'
+      const gwpTier = l.gwpConfidenceLabel ? 'Verified / Matched' : 'Assumed'
+      const serviceLifeStr = l.serviceLifeYears ? `${l.serviceLifeYears} yrs` : '50 yrs (Assumed)'
+      const eolStr = l.eolSource ? `Modeled (${l.eolSource})` : 'Assumed Category'
 
-      lines.push(`  • Layer #${idx + 1}: ${l.name}`)
-      lines.push(`    - GWP Provenance: ${gwpTier}`)
-      lines.push(`    - Service Life (RSP): ${serviceLifeStr}`)
-      lines.push(`    - Data Confidence Level: ${confLevel}`)
+      lines.push(`  Layer #${idx + 1}: ${l.name}`)
+      lines.push(`    - GWP Data Source: ${l.gwpSourceNote || l.gwpConfidenceLabel || 'Ökobaudat EPD Category Match'}`)
+      lines.push(`    - Service Life Assumption: ${serviceLifeStr} (Basis: ${l.serviceLifeSource || 'EN 15804 standard'})`)
+      lines.push(`    - End-of-Life Scenario Basis: ${eolStr} — ${l.eolAssumptionBasis || 'Recycling / Incineration standard'}`)
+      lines.push(`    - Freight Distance Source: ${l.distanceKm ? Math.round(l.distanceKm) + ' km (' + (l.distanceSource || 'Detmold Hub Route') + ')' : 'Standard 370 km route'}`)
+      lines.push(`    - Data Confidence Level: ${l.gwpConfidenceLabel?.toLowerCase().includes('brand') ? 'HIGH CONFIDENCE' : 'MEDIUM / ACCEPTABLE CONFIDENCE'}`)
     })
     lines.push('')
   }
@@ -687,8 +596,8 @@ function buildDocStylingRequests(reportText, insertIndex = 1) {
         }
       })
     }
-    // 2. Main Chapter Headings (1. EXECUTIVE SUMMARY, 2. METHODOLOGY, 3. MATERIAL RESEARCH, 4. STRUCTURAL ELEMENTS, 5. WHOLE-BUILDING LCA, 6. DISCUSSION, 7. REFERENCES or ABSTRACT, TABLE OF CONTENTS) -> HEADING_1
-    else if (/^[1-9][0-9]*\.\s+[A-Za-z0-9\s&,\-–—\(\):\/]+$/.test(line) || line === 'ABSTRACT' || line === 'TABLE OF CONTENTS') {
+    // 2. Main Chapter Headings (1. EXECUTIVE SUMMARY, 2. METHODOLOGY, 3. MATERIAL RESEARCH, etc. or ABSTRACT, TABLE OF CONTENTS) -> HEADING_1
+    else if (/^[1-7]\.\s+[A-Z\s&,–—\(\)]+$/.test(line) || line === 'ABSTRACT' || line === 'TABLE OF CONTENTS') {
       requests.push({
         updateParagraphStyle: {
           range: { startIndex: startPos, endIndex: endPos },
@@ -830,46 +739,6 @@ function buildDocStylingRequests(reportText, insertIndex = 1) {
         }
       })
     }
-    // 8. Key Parameter & Status Badges (Green / Crimson / Amber)
-    else if (
-      line.includes('[GREEN') ||
-      line.includes('[CARBON SINK') ||
-      line.includes('[NET CIRCULAR') ||
-      line.includes('[PASS')
-    ) {
-      requests.push({
-        updateTextStyle: {
-          range: { startIndex: startPos, endIndex: endPos },
-          textStyle: {
-            bold: true,
-            foregroundColor: { color: { rgbColor: { red: 0.016, green: 0.471, blue: 0.341 } } } // Emerald Green #047857
-          },
-          fields: 'bold,foregroundColor'
-        }
-      })
-    } else if (line.includes('[HIGH IMPACT') || line.includes('[DIESEL ROAD FREIGHT]')) {
-      requests.push({
-        updateTextStyle: {
-          range: { startIndex: startPos, endIndex: endPos },
-          textStyle: {
-            bold: true,
-            foregroundColor: { color: { rgbColor: { red: 0.863, green: 0.149, blue: 0.149 } } } // Crimson #DC2626
-          },
-          fields: 'bold,foregroundColor'
-        }
-      })
-    } else if (line.includes('[MODERATE')) {
-      requests.push({
-        updateTextStyle: {
-          range: { startIndex: startPos, endIndex: endPos },
-          textStyle: {
-            bold: true,
-            foregroundColor: { color: { rgbColor: { red: 0.851, green: 0.467, blue: 0.024 } } } // Amber #D97706
-          },
-          fields: 'bold,foregroundColor'
-        }
-      })
-    }
   }
 
   return requests
@@ -927,12 +796,13 @@ export function generateLcaModuleText(moduleKey, summaries = [], references = []
     case 'PROPOSAL_COMPARISON':
       lines.push(`PROPOSAL MID 2030 REQUIREMENT COMPARISON & COMPLIANCE MATRIX`)
       lines.push(`-----------------------------------------------------------------`)
+      lines.push(`⚠️ PLACEHOLDER FLAGS BELOW: items marked [NOT YET PERFORMED] describe work that has not actually been done in this app or elsewhere on the team — do not cite or submit as complete.\n`)
       lines.push(`Project Brief Alignment Check (Professor's MID 2030 Assignment):`)
       lines.push(`  1. 3D Model & Envelope Development [100% COMPLETE]: Defined 6 complete envelope assemblies (Wall, Floor, Roof, Window, Door, Skylight) for Model 1 (Batavierenplantsoen, Haarlem).`)
-      lines.push(`  2. Material Research & EPD Sourcing [100% COMPLETE]: Integrated Ökobaudat soda4LCA API, cataloged 20+ materials with density ρ, λ, c, μ, and EPD UUIDs. Created Paludi insulation board EPD.`)
-      lines.push(`  3. Thermal Performance & Physics [100% COMPLETE]: Computed layer R-values and assembly U-values (Wall: 0.142 W/m²K, Roof: 0.118 W/m²K) per DIN EN ISO 6946.`)
-      lines.push(`  4. Hygrothermal & Moisture Analysis [DELPHIN 1D CHAPTER INTEGRATED]: Vapour diffusion resistance (sd = μ · d), interstitial condensation risk (Glaser method & Delphin 1D transient simulation).`)
-      lines.push(`  5. Operational Energy & 50-Year Simulation [LADYBUG CHAPTER INTEGRATED]: 50-year RSP dynamic thermal modeling in Ladybug/EnergyPlus (Annual heating: 38.4 kWh/m²/yr, Total operational B6: 44.6 kWh/m²/yr).`)
+      lines.push(`  2. Material Research & EPD Sourcing [100% COMPLETE]: Integrated Ökobaudat soda4LCA API, cataloged 20+ materials with density ρ, λ, c, μ, and EPD UUIDs. Paludi insulation board EPD [NOT YET PERFORMED — a required deliverable per the brief, not started anywhere in the app].`)
+      lines.push(`  3. Thermal Performance & Physics [100% COMPLETE]: Computed layer R-values and assembly U-values per DIN EN ISO 6946 — see the LCA and EPD tab for this project's real, live-computed figures (illustrative example values above are not live data).`)
+      lines.push(`  4. Hygrothermal & Moisture Analysis [NOT YET PERFORMED]: No Delphin, WUFI, or other hygrothermal/moisture simulation exists anywhere in this project — see Chapter 2.1 below, which is placeholder text only.`)
+      lines.push(`  5. Operational Energy & 50-Year Simulation [PARTIALLY BUILT]: Whole-building operational energy (Module B6) IS computed in this app (LCA Summary → Operational Energy settings) from real inputs — but no Ladybug/EnergyPlus dynamic simulation exists; see Chapter 2.2 below, which is placeholder text only.`)
       lines.push(`  6. Life Cycle Assessment A1–A3 [100% COMPLETE]: Cradle-to-gate embodied GWP per material with biogenic carbon sequestration for wood-fiber insulation.`)
       lines.push(`  7. Transportation Logistics A4 [100% COMPLETE]: DIN EN ISO 14083 freight logistics via Detmold hub to Haarlem site with real routed driving distances.`)
       lines.push(`  8. End-of-Life & Circularity C & D [100% COMPLETE]: Demolition (C1), transport (C2), processing (C3), disposal (C4), and circular recycling credits (Module D).`)
@@ -940,6 +810,8 @@ export function generateLcaModuleText(moduleKey, summaries = [], references = []
       break
 
     case 'DELPHIN_MOISTURE':
+      lines.push(`⚠️ PLACEHOLDER CONTENT — NOT A REAL ANALYSIS ⚠️`)
+      lines.push(`No Delphin, WUFI, or any other hygrothermal/moisture simulation has actually been run for this project. Every figure below is illustrative placeholder text, not a verified result — do not cite or submit this section until someone has actually performed this analysis and replaced this text with real findings.\n`)
       lines.push(`CHAPTER 2.1: DELPHIN 1D HYGROTHERMAL & MOISTURE ANALYSIS (DELPHIN 5/6 & WUFI)`)
       lines.push(`-----------------------------------------------------------------`)
       lines.push(`Specialist Team Analysis Focus: Transient 1D heat, air, and moisture transport (HAM) modeling across timber envelope assemblies.`)
@@ -955,6 +827,8 @@ export function generateLcaModuleText(moduleKey, summaries = [], references = []
       break
 
     case 'LADYBUG_ENERGY':
+      lines.push(`⚠️ PLACEHOLDER CONTENT — NOT A REAL ANALYSIS ⚠️`)
+      lines.push(`No Ladybug/Honeybee/EnergyPlus dynamic simulation has actually been run for this project. Every figure below is illustrative placeholder text, not a verified result. This app DOES compute a real whole-building operational energy figure (Module B6 — see LCA Summary → Operational Energy settings), but that is a simple single-factor calculation, not the dynamic 50-year simulation described here — do not cite or submit this section until someone has actually run that analysis and replaced this text with real findings.\n`)
       lines.push(`CHAPTER 2.2: LADYBUG 50-YEAR DYNAMIC ENERGY & THERMAL COMFORT SIMULATION (LADYBUG / HONEYBEE)`)
       lines.push(`-----------------------------------------------------------------`)
       lines.push(`Specialist Team Analysis Focus: 50-Year Reference Study Period (RSP) dynamic building energy simulation using Ladybug Tools (EnergyPlus kernel).`)
@@ -1001,12 +875,21 @@ export function generateLcaModuleText(moduleKey, summaries = [], references = []
       }
       break
 
-    case 'GLOBAL_GRAPHICS': {
+    case 'GLOBAL_GRAPHICS':
+      lines.push(`5. WHOLE-BUILDING LIFECYCLE ASSESSMENT TOTALS & EPD LOGISTICS`)
+      lines.push(`-----------------------------------------------------------------`)
       const globalLca = getGlobalLcaSummary()
       const providerStats = getGlobalProviderStats()
-      lines.push(generateChapter5Section(globalLca, providerStats, summaries))
+      lines.push(`Whole-Building Embodied Carbon (A1-A3 Total): ${fmt(globalLca.a1a3Total, 1)} kg CO₂e`)
+      lines.push(`Whole-Building Logistics Freight (A4 Total): ${fmt(globalLca.a4Total, 1)} kg CO₂e`)
+      lines.push(`50-Year Replacement Impact (B4 Total): ${fmt(globalLca.b4Total, 1)} kg CO₂e`)
+      lines.push(`Circular Recycling Credit (Module D Total): ${fmt(globalLca.moduleDTotal, 1)} kg CO₂e\n`)
+
+      lines.push(`[EPD SUPPLIER GEOGRAPHIC RADIUS DISTRIBUTION]`)
+      lines.push(`  Radius ≤ 500 km:  ${renderAsciiBar(providerStats.within500, providerStats.count || 10, 16)} ${providerStats.within500} suppliers`)
+      lines.push(`  Radius ≤ 1000 km: ${renderAsciiBar(providerStats.within1000, providerStats.count || 10, 16)} ${providerStats.within1000} suppliers`)
+      lines.push(`  Average Logistics Freight Distance: ${providerStats.avgKm ? Math.round(providerStats.avgKm) : 370} km\n`)
       break
-    }
 
     case 'ANNEX_A_FICHES':
       lines.push(`ANNEX A: MATERIAL FICHE SHEETS & TECHNICAL DATA SPECIFICATIONS`)
@@ -1163,237 +1046,5 @@ export async function overwriteLcaReportInDoc(docId, summaries, references, acce
 
   return { success: true, docTitle: doc.title, documentId: cleanId }
 }
-
-/**
- * Uploads a base64 Data URL or Blob to Google Drive and sets public read permissions.
- * Returns the Google Drive file ID and public URL for Google Docs insertInlineImage.
- */
-export async function uploadImageToDrive(dataUrl, fileName = 'lca-app-image.png', accessToken) {
-  if (!accessToken) throw new Error('Google access token is required to upload images to Drive')
-  if (!dataUrl || typeof dataUrl !== 'string') throw new Error('Invalid image data provided for upload')
-
-  // Convert Data URL to Blob
-  const blobRes = await fetch(dataUrl)
-  const blob = await blobRes.blob()
-
-  const metadata = {
-    name: fileName,
-    mimeType: blob.type || 'image/png'
-  }
-
-  const formData = new FormData()
-  formData.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }))
-  formData.append('file', blob)
-
-  const uploadRes = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${accessToken}`
-    },
-    body: formData
-  })
-
-  if (!uploadRes.ok) {
-    const err = await uploadRes.json().catch(() => ({}))
-    throw new Error(err.error?.message || `Google Drive Upload Failed (HTTP ${uploadRes.status})`)
-  }
-
-  const fileData = await uploadRes.json()
-  const fileId = fileData.id
-
-  // Set file permissions to 'anyone reader' so Google Docs service can embed the image
-  try {
-    await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}/permissions`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        role: 'reader',
-        type: 'anyone'
-      })
-    })
-  } catch (permErr) {
-    console.warn('Drive file permission warning:', permErr)
-  }
-
-  const publicUrl = `https://lh3.googleusercontent.com/d/${fileId}`
-
-  // Wait briefly for Google Drive CDN propagation so Google Docs API can fetch the image
-  for (let attempt = 0; attempt < 5; attempt++) {
-    try {
-      const probe = await fetch(publicUrl, { method: 'HEAD' })
-      if (probe.ok) break
-    } catch (_) {}
-    await new Promise((r) => setTimeout(r, 1000))
-  }
-
-  return {
-    fileId,
-    publicUrl
-  }
-}
-
-/**
- * Helper to find insertion location in Google Doc for a given media item by checking anchor tokens or section headings
- */
-function findAnchorLocationInDoc(doc, anchorKey, name) {
-  if (!doc?.body?.content) return null
-
-  // Priority 1: Match exact [MEDIA_ANCHOR:...] token
-  if (anchorKey) {
-    const token = `[MEDIA_ANCHOR:${anchorKey}]`
-    for (const elem of doc.body.content) {
-      if (!elem.paragraph?.elements) continue
-      const txt = elem.paragraph.elements.map((e) => e.textRun?.content || '').join('')
-      if (txt.includes(token)) {
-        return {
-          startIndex: elem.startIndex,
-          endIndex: elem.endIndex,
-          deleteRange: { startIndex: elem.startIndex, endIndex: elem.endIndex },
-          tokenFound: true
-        }
-      }
-    }
-  }
-
-  // Priority 2: Fallback heading search
-  for (const elem of doc.body.content) {
-    if (!elem.paragraph?.elements) continue
-    const txt = elem.paragraph.elements.map((e) => e.textRun?.content || '').join('')
-
-    if (anchorKey?.startsWith('SECTION_')) {
-      const key = anchorKey.replace('SECTION_', '')
-      if (txt.toUpperCase().includes(`BUILDING ELEMENT: ${key}`)) {
-        return { startIndex: elem.endIndex - 1, tokenFound: false }
-      }
-    } else if (anchorKey?.startsWith('FICHE_#')) {
-      const num = anchorKey.replace('FICHE_#', '')
-      if (txt.toUpperCase().includes(`FICHE #${num}:`)) {
-        return { startIndex: elem.endIndex - 1, tokenFound: false }
-      }
-    } else if (anchorKey === '01_THERMAL_BAR_CHARTS' && txt.includes('4. STRUCTURAL ELEMENT ASSEMBLIES')) {
-      return { startIndex: elem.endIndex - 1, tokenFound: false }
-    } else if (anchorKey === '02_DELPHIN_1D' && txt.includes('3. MATERIAL RESEARCH')) {
-      return { startIndex: elem.endIndex - 1, tokenFound: false }
-    } else if (anchorKey === '03_LIFECYCLE_STAGE_CHARTS' && txt.includes('5.2 Whole-Building Lifecycle')) {
-      return { startIndex: elem.endIndex - 1, tokenFound: false }
-    }
-  }
-
-  return null
-}
-
-/**
- * Inserts one or more PNG images into a Google Document by uploading them to Google Drive
- * and inserting them as inline images directly at their corresponding chapter anchor positions.
- */
-export async function insertAppPngsToGoogleDoc(docId, pngItems, accessToken) {
-  const cleanId = extractDocId(docId)
-  let uploadedCount = 0
-
-  for (const item of pngItems) {
-    if (!item.dataUrl) continue
-
-    try {
-      // 1. Upload image to Google Drive
-      const fileName = item.name || `lca-app-export-${uploadedCount + 1}.png`
-      const { publicUrl } = await uploadImageToDrive(item.dataUrl, fileName, accessToken)
-
-      // 2. Fetch current doc to locate anchor position
-      const doc = await getGoogleDocMetadata(cleanId, accessToken)
-
-      let targetIndex = 1
-      let deleteRange = null
-
-      const loc = findAnchorLocationInDoc(doc, item.anchorKey, item.name)
-      if (loc) {
-        targetIndex = loc.startIndex
-        deleteRange = loc.deleteRange
-      } else if (doc?.body?.content?.length) {
-        // Fallback to end of document
-        const lastElement = doc.body.content[doc.body.content.length - 1]
-        if (lastElement.endIndex && lastElement.endIndex > 1) {
-          targetIndex = lastElement.endIndex - 1
-        }
-      }
-
-      const widthPt = item.widthPt || 425
-      const heightPt = item.heightPt || 280
-
-      const itemRequests = []
-
-      // If exact token line was found, delete the placeholder text first
-      if (deleteRange) {
-        itemRequests.push({
-          deleteContentRange: {
-            range: {
-              startIndex: deleteRange.startIndex,
-              endIndex: deleteRange.endIndex
-            }
-          }
-        })
-      } else {
-        itemRequests.push({
-          insertText: {
-            location: { index: targetIndex },
-            text: `\n`
-          }
-        })
-        targetIndex += 1
-      }
-
-      itemRequests.push({
-        insertInlineImage: {
-          location: { index: targetIndex },
-          uri: publicUrl,
-          objectSize: {
-            width: { magnitude: widthPt, unit: 'PT' },
-            height: { magnitude: heightPt, unit: 'PT' }
-          }
-        }
-      })
-      targetIndex += 1
-
-      if (item.caption) {
-        const captionText = `\nFigure: ${item.caption}\n\n`
-        itemRequests.push({
-          insertText: {
-            location: { index: targetIndex },
-            text: captionText
-          }
-        })
-      }
-
-      // Send batchUpdate for this item
-      const res = await fetch(`https://docs.googleapis.com/v1/documents/${cleanId}:batchUpdate`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ requests: itemRequests })
-      })
-
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}))
-        console.warn(`Failed to insert item ${fileName}:`, err)
-      } else {
-        uploadedCount++
-      }
-    } catch (itemErr) {
-      console.warn('Error processing PNG item insertion:', itemErr)
-    }
-  }
-
-  if (uploadedCount === 0) {
-    throw new Error('Could not insert PNG images into Google Doc. Please verify permissions or try again.')
-  }
-
-  const finalDoc = await getGoogleDocMetadata(cleanId, accessToken)
-  return { success: true, count: uploadedCount, docTitle: finalDoc?.title || 'Document', documentId: cleanId }
-}
-
 
 

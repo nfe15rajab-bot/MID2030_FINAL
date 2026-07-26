@@ -168,7 +168,7 @@ export function buildLayerCalculationSteps(assemblyKey, layerResult) {
   // formulas, except C2 which reuses the exact A4 transport formula above
   // with the shared waste-facility distance instead of the provider route.
   const eolParts = []
-  const eolTierLabel = layerResult.eolSource === 'epd' ? 'EPD-sourced' : layerResult.eolSource === 'ai' ? 'AI-sourced' : 'verified assumption'
+  const eolTierLabel = layerResult.eolSource === 'epd' ? 'EPD-sourced' : layerResult.eolSource === 'ai' ? 'AI-sourced' : 'manual assumption'
   if (layerResult.c1 != null) eolParts.push(`C1 = ${fmt(layerResult.c1, 2)} kg CO₂e (${eolTierLabel})`)
   if (layerResult.c2 != null) eolParts.push(`C2 = ${fmt(layerResult.c2, 2)} kg CO₂e (${layerResult.c2Source ?? 'computed'})`)
   if (layerResult.c3 != null) eolParts.push(`C3 = ${fmt(layerResult.c3, 2)} kg CO₂e (${eolTierLabel})`)

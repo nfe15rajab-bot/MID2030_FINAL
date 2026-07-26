@@ -300,7 +300,7 @@ function AnnexSingleFicheCard({ idx, entry, material, detail, closestToSite }) {
 
   return (
     <div className="a4-fiche-visual-card" style={{ border: '1px solid #e2e8f0', borderRadius: '10px', padding: '16px', background: '#ffffff', marginBottom: '24px', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', borderBottom: '1px solid #f1f5f9', paddingBottom: '8px' }} data-html2canvas-ignore="true">
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', borderBottom: '1px solid #f1f5f9', paddingBottom: '8px' }}>
         <div>
           <h3 style={{ margin: 0, fontSize: '1.1rem', color: '#0f172a', fontWeight: 600 }}>
             Fiche #{idx + 1}: {material.name || entry.label}
@@ -477,7 +477,7 @@ const A4ReportDraft = forwardRef(function A4ReportDraft({ summaries, references 
     <div className="a4-report" ref={ref}>
       <div className="a4-report-header">
         <h1>MID 2030 — Model 1 Assembly Builder</h1>
-        <p>MID 2030 Research Team ("We") · Batavierenplantsoen, Haarlem</p>
+        <p>Group 02 · Batavierenplantsoen, Haarlem</p>
         <p className="a4-report-date">Generated {new Date().toLocaleDateString()}</p>
       </div>
 
@@ -498,7 +498,7 @@ const A4ReportDraft = forwardRef(function A4ReportDraft({ summaries, references 
         <h2>1. Introduction</h2>
         <p>
           This report documents the life-cycle assessment (LCA) of Model 1, a timber cabin designed
-          for Batavierenplantsoen, Haarlem, by our research team ("we") as part of the MID 2030 (Theory and
+          for Batavierenplantsoen, Haarlem, by Group 02 as part of the MID 2030 (Theory and
           Sustainable Construction) module. The assessment covers all six building elements — Wall,
           Floor, Roof, Skylight, Window, and Door — computed using material, geometry, and transport
           data entered into this project's assembly-builder tool, never hand-typed into this report
@@ -594,8 +594,10 @@ const A4ReportDraft = forwardRef(function A4ReportDraft({ summaries, references 
           This project follows the EN 15804/15978 lifecycle-module framework specified in the class brief:
           embodied carbon for the product stage (A1-A3), transport impacts (A4), replacement impacts (B4),
           operational energy (B6, whole-building), and end-of-life scenarios (C and D stages) — normalized to
-          kg CO₂e/m²/yr over a {RSP_YEARS}-year reference study period. Modules outside this set (A5,
-          B1-B3, B5, B7) exist in the standard but fall outside this assignment's defined system boundary.
+          kg CO₂e/m²/yr over a {RSP_YEARS}-year reference study period. B1 (use), B2 (maintenance), B3
+          (repair), B5 (refurbishment), and B7 (water use) are in scope for written discussion — see each
+          module's own note below — but deliberately not assigned an invented figure. Module A5 (construction
+          / installation) is the only module not addressed anywhere in this report.
         </p>
         <div className="a4-report-table-wrapper">
           <table className="a4-report-table">
@@ -609,7 +611,7 @@ const A4ReportDraft = forwardRef(function A4ReportDraft({ summaries, references 
                   <td>{m.label}</td>
                   <td>{m.standard}</td>
                   <td>{m.inScope ? 'Yes' : 'No'}</td>
-                  <td>{m.formula ?? (m.inScope ? 'researched per material (EPD/AI/manual)' : '—')}</td>
+                  <td>{m.formula ?? (m.computed ? 'researched per material (EPD/AI/manual)' : m.inScope ? 'discussed qualitatively, not computed' : '—')}</td>
                 </tr>
               ))}
             </tbody>

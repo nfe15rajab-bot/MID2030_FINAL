@@ -13,12 +13,14 @@ import { REFERENCE_STUDY_PERIOD_YEARS } from '../lib/lcaAnalysis.js'
 
 export const RSP_YEARS = REFERENCE_STUDY_PERIOD_YEARS
 
-// `inScope`/`scopeNote` describe THIS project's own defined system
-// boundary (per the class brief's section 5.2 task list and what
-// lcaAnalysis.js actually computes) — not a statement about the EN
-// 15804/15978 standard itself. Every module below exists in the standard
-// regardless of whether this project calculates it; the brief only asks
-// for A1-A3, A4, B4, B6 (operational energy), and C&D.
+// `inScope` = this project addresses the module at all (by calculation
+// OR by written discussion) — distinct from `computed`, which is true
+// only when a real formula or per-material researched figure exists.
+// A module can be inScope:true, computed:false (B1/B2/B3/B5/B7 below —
+// discussed in the report, never assigned an invented number) as well
+// as inScope:false (only A5, genuinely untouched anywhere). Every
+// module below exists in the EN 15804/15978 standard regardless of
+// which of these three states this project puts it in.
 export const LCA_MODULES = [
   {
     group: 'Product stage',
@@ -26,6 +28,7 @@ export const LCA_MODULES = [
     label: 'Raw material supply, transport to factory, manufacturing',
     standard: 'EN 15804',
     inScope: true,
+    computed: true,
     formula: 'A1-A3 = declared GWP unit value × quantity',
     formulaNote:
       "Quantity is derived from each layer's own functional unit — area×thickness×coverage for an " +
@@ -42,6 +45,7 @@ export const LCA_MODULES = [
     label: 'Transport to construction site',
     standard: 'DIN EN ISO 14083',
     inScope: true,
+    computed: true,
     formula: [
       'tonnes = massKg / 1000',
       'litresPer100km = emptyConsumption + (loadedVsEmptyDiff × (tonnes / 2)) / payloadCapacity',
@@ -67,24 +71,54 @@ export const LCA_MODULES = [
     label: 'Construction / installation',
     standard: 'EN 15804',
     inScope: false,
+    computed: false,
     scopeNote:
-      "Not calculated in this project — on-site installation impacts (equipment use, site waste) are " +
-      "outside this assignment's defined system boundary (brief section 5.2's task list stops at A1-A3/A4/B4/C&D).",
+      "Not addressed anywhere in this project, calculated or discussed — on-site installation impacts " +
+      "(equipment use, site waste) are outside this assignment's defined system boundary (brief section " +
+      "5.2's task list stops at A1-A3/A4/B4/C&D).",
     description: 'Impacts of the construction process itself once materials reach site — equipment operation, on-site waste, temporary works.',
   },
   {
-    group: 'Use stage', code: 'B1', label: 'Use', standard: 'EN 15978', inScope: false,
-    scopeNote: 'Not calculated — no per-material in-use impact (e.g. off-gassing) modeled.',
+    group: 'Use stage',
+    code: 'B1',
+    label: 'Use',
+    standard: 'EN 15978',
+    inScope: true,
+    computed: false,
+    formula: null,
+    formulaNote:
+      'Discussed qualitatively, not computed — no invented number. Natural timber, wood-fibre insulation, and ' +
+      'the mineral/EPDM membrane materials used in this design are not expected to off-gas or degrade ' +
+      'meaningfully in normal use; no VOC-emission or in-use environmental impact is quantified here.',
     description: 'Any impact from a material simply being in place and in use.',
   },
   {
-    group: 'Use stage', code: 'B2', label: 'Maintenance', standard: 'EN 15978', inScope: false,
-    scopeNote: 'Not calculated.',
+    group: 'Use stage',
+    code: 'B2',
+    label: 'Maintenance',
+    standard: 'EN 15978',
+    inScope: true,
+    computed: false,
+    formula: null,
+    formulaNote:
+      'Discussed qualitatively, not computed — no invented number. Routine maintenance (e.g. periodic ' +
+      're-coating/re-sealing of exterior cladding and membranes) is assumed to fall within each material\'s own ' +
+      'rated service life and is not modeled as a separate GWP contribution — see B4, which already accounts ' +
+      'for what happens once that service life is reached.',
     description: 'Routine upkeep required to keep a material performing as intended.',
   },
   {
-    group: 'Use stage', code: 'B3', label: 'Repair', standard: 'EN 15978', inScope: false,
-    scopeNote: 'Not calculated.',
+    group: 'Use stage',
+    code: 'B3',
+    label: 'Repair',
+    standard: 'EN 15978',
+    inScope: true,
+    computed: false,
+    formula: null,
+    formulaNote:
+      'Discussed qualitatively, not computed — no invented number. Minor repairs short of full replacement ' +
+      'are not modeled as their own figure; any repair-level impact is treated as already folded into B4\'s ' +
+      'replacement-count assumption once a material reaches the end of its service life.',
     description: 'Impact of fixing damage short of full replacement.',
   },
   {
@@ -93,6 +127,7 @@ export const LCA_MODULES = [
     label: 'Replacement',
     standard: 'EN 15978',
     inScope: true,
+    computed: true,
     formula: [
       `replacementCount = MAX(CEIL(${RSP_YEARS} / serviceLifeYears) − 1, 0)`,
       'B4 = replacementCount × (A1-A3 + A4)',
@@ -107,8 +142,16 @@ export const LCA_MODULES = [
       `shorter than the ${RSP_YEARS}-year reference study period this project uses.`,
   },
   {
-    group: 'Use stage', code: 'B5', label: 'Refurbishment', standard: 'EN 15978', inScope: false,
-    scopeNote: 'Not calculated.',
+    group: 'Use stage',
+    code: 'B5',
+    label: 'Refurbishment',
+    standard: 'EN 15978',
+    inScope: true,
+    computed: false,
+    formula: null,
+    formulaNote:
+      'Discussed qualitatively, not computed — no invented number. No larger-scale refurbishment or design ' +
+      `change is planned within the ${RSP_YEARS}-year reference study period for this cabin design.`,
     description: "Larger-scale renovation impact partway through the building's life.",
   },
   {
@@ -117,6 +160,7 @@ export const LCA_MODULES = [
     label: 'Operational energy use',
     standard: 'EN 15978',
     inScope: true,
+    computed: true,
     formula: `B6 = electricityGwpFactor × intensityLoad × conditionedFloorAreaM2 × ${RSP_YEARS}`,
     formulaNote:
       'A single whole-building figure (LCA Summary → Operational Energy settings), not apportioned per ' +
@@ -129,8 +173,17 @@ export const LCA_MODULES = [
       "driven by the envelope's own thermal performance (U-values).",
   },
   {
-    group: 'Use stage', code: 'B7', label: 'Water use', standard: 'EN 15978', inScope: false,
-    scopeNote: 'Not calculated.',
+    group: 'Use stage',
+    code: 'B7',
+    label: 'Water use',
+    standard: 'EN 15978',
+    inScope: true,
+    computed: false,
+    formula: null,
+    formulaNote:
+      "Discussed qualitatively, not computed — no invented number. This project's system boundary (per the " +
+      "class brief) covers material embodied carbon and building-envelope-linked operational energy (B6), " +
+      "not the cabin's domestic/operational water consumption.",
     description: 'Impact of water consumed operating the building.',
   },
   {
@@ -139,6 +192,7 @@ export const LCA_MODULES = [
     label: 'Deconstruction / demolition',
     standard: 'EN 15978',
     inScope: true,
+    computed: true,
     formula: null,
     formulaNote: 'Researched per material (EPD-published, AI-suggested, or manual), each tagged with its confidence tier — never derived from a formula.',
     description: 'Impact of taking the material out of the building at end of life.',
@@ -149,6 +203,7 @@ export const LCA_MODULES = [
     label: 'Transport to waste processing',
     standard: 'EN 15978',
     inScope: true,
+    computed: true,
     formula: 'Same DIN EN ISO 14083 formula as A4 (above), using the shared waste-facility distance in place of the manufacturer-to-site distance.',
     formulaNote: 'A real EPD-published C2 figure is used instead, when one exists — that takes priority over the estimate.',
     description: 'Emissions moving the material from site to wherever it is processed at end of life.',
@@ -159,6 +214,7 @@ export const LCA_MODULES = [
     label: 'Waste processing',
     standard: 'EN 15978',
     inScope: true,
+    computed: true,
     formula: null,
     formulaNote: 'Researched per material, same as C1.',
     description: 'Sorting/processing the material for recycling, energy recovery, or disposal.',
@@ -169,6 +225,7 @@ export const LCA_MODULES = [
     label: 'Disposal',
     standard: 'EN 15978',
     inScope: true,
+    computed: true,
     formula: null,
     formulaNote: 'Researched per material, same as C1.',
     description: 'Final landfilling or incineration-without-recovery impact.',
@@ -179,6 +236,7 @@ export const LCA_MODULES = [
     label: 'Reuse, recovery, recycling potential',
     standard: 'EN 15978',
     inScope: true,
+    computed: true,
     formula: null,
     formulaNote: 'Researched per material, always shown as a credit (≤0 kg CO2e) — a benefit, never a burden.',
     description: 'Environmental benefit a material provides beyond its own life, by being reused, recycled, or recovered for energy instead of landfilled.',

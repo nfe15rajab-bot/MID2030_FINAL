@@ -2,12 +2,10 @@ import html2canvas from 'html2canvas'
 import { jsPDF } from 'jspdf'
 
 // Adds one canvas to the PDF, splitting across additional pages if the
-// canvas (scaled to the page width) is taller than a single page — shared
-// by exportMultiPagePdf (one long element) and exportMultiSectionPdf
-// (several independent elements, each paginated the same way) so the
-// slicing math only lives in one place. Assumes the canvas should start
-// on whatever the PDF's current page already is — callers handle adding
-// a fresh page BEFORE calling this for anything after the first section.
+// canvas (scaled to the page width) is taller than a single page. Assumes
+// the canvas should start on whatever the PDF's current page already is —
+// callers handle adding a fresh page BEFORE calling this for anything
+// after the first chunk/section.
 function addCanvasPaginated(pdf, canvas, pdfWidth, pdfHeight) {
   if (!canvas || canvas.width === 0 || canvas.height === 0) {
     throw new Error('Canvas rendering failed (0 width or height)')
@@ -82,48 +80,64 @@ export function isolateClonedElement(clonedDoc, clonedEl, defaultWidth = 800) {
   clonedDoc.body.appendChild(container)
 }
 
-export async function exportMultiPagePdf(element, filename, { format = 'a4', orientation = 'portrait' } = {}) {
-  if (!element) throw new Error('No element provided for PDF export')
+// A full multi-section report (or poster page) can be tens of thousands
+// of px tall. At scale:2 that's a canvas well past what a browser will
+// actually allocate (commonly ~16k-32k px per side, ~268M px total area)
+// — past that ceiling html2canvas/the browser doesn't error, it silently
+// returns a canvas with the overflow portion blank, which is exactly what
+// was showing up as blank pages in the exported PDF. Capturing the SAME
+// element in slices instead — each sized to an exact whole number of PDF
+// pages, so a slice boundary is always also a page boundary, never a
+// partial/duplicated page at the seam — keeps every single html2canvas
+// call comfortably under any browser's limit, regardless of how long the
+// report gets.
+//
+// Every chunk re-clones and re-lays-out the ENTIRE element (windowHeight
+// stays the full document height so layout resolves correctly; only the
+// OUTPUT canvas is cropped to this chunk's slice), so a smaller chunk
+// size means MORE full-document render passes, not less total work --
+// this is the real cost behind a slow export, not any one pass being
+// inefficient. 20,000px (pre-scale) at scale:2 -> ~40,000px canvas
+// height, ~63M px^2 area for this app's own ~794px-wide report content
+// -- still a small fraction of the 268M-px ceiling -- roughly halves the
+// chunk count (and so the wall-clock time) versus the original
+// conservative 12,000px this was verified safe at.
+const MAX_CHUNK_SOURCE_HEIGHT = 20000
 
+// Captures one element and adds it to the PDF, chunked per the above.
+// `isFirstOverall` controls whether the very first chunk draws on the
+// PDF's already-existing current page (the true start of the document)
+// or needs its own fresh page first (a later section in a multi-element
+// export, e.g. exportMultiSectionPdf's second/third element).
+function countChunks(element, pdfWidth, pdfHeight) {
+  const width = element.scrollWidth || element.offsetWidth || 800
+  const height = element.scrollHeight || element.offsetHeight || 1000
+  const sourcePxPerPage = pdfHeight * (width / pdfWidth)
+  const pagesPerChunk = Math.max(1, Math.floor(MAX_CHUNK_SOURCE_HEIGHT / sourcePxPerPage))
+  const chunkHeight = pagesPerChunk * sourcePxPerPage
+  return Math.max(1, Math.ceil(height / chunkHeight))
+}
+
+// `onProgress(current, total)` fires after each chunk — this export can
+// take a minute or more on a full multi-section report (each chunk is its
+// own full html2canvas pass), and with nothing but a static "Generating…"
+// label the whole time, a slow-but-working export is easy to mistake for
+// a hung/broken one. Reporting real chunk progress lets the caller show
+// the difference.
+async function captureElementPaginated(pdf, element, pdfWidth, pdfHeight, { scale = 2, isFirstOverall, onProgress, totalChunks = 1, chunksDoneBefore = 0 } = {}) {
   const width = element.scrollWidth || element.offsetWidth || 800
   const height = element.scrollHeight || element.offsetHeight || 1000
 
-  const canvas = await html2canvas(element, {
-    scale: 2,
-    backgroundColor: '#ffffff',
-    useCORS: true,
-    allowTaint: true,
-    logging: false,
-    imageTimeout: 15000,
-    scrollX: 0,
-    scrollY: 0,
-    x: 0,
-    y: 0,
-    width: width,
-    height: height,
-    windowWidth: width,
-    windowHeight: height,
-    onclone: (clonedDoc, clonedEl) => {
-      isolateClonedElement(clonedDoc, clonedEl, width)
-    }
-  })
-  const pdf = new jsPDF({ orientation, unit: 'px', format })
-  addCanvasPaginated(pdf, canvas, pdf.internal.pageSize.getWidth(), pdf.internal.pageSize.getHeight())
-  pdf.save(filename)
-}
+  const sourcePxPerPage = pdfHeight * (width / pdfWidth)
+  const pagesPerChunk = Math.max(1, Math.floor(MAX_CHUNK_SOURCE_HEIGHT / sourcePxPerPage))
+  const chunkHeight = pagesPerChunk * sourcePxPerPage
 
-export async function exportMultiSectionPdf(elements, filename, { format = 'a4', orientation = 'portrait' } = {}) {
-  const pdf = new jsPDF({ orientation, unit: 'px', format })
-  const pdfWidth = pdf.internal.pageSize.getWidth()
-  const pdfHeight = pdf.internal.pageSize.getHeight()
-
-  for (let i = 0; i < elements.length; i++) {
-    const el = elements[i]
-    if (!el) continue
-    const width = el.scrollWidth || el.offsetWidth || 1200
-    const height = el.scrollHeight || el.offsetHeight || 1000
-    const canvas = await html2canvas(el, {
-      scale: 2,
+  let firstChunk = true
+  let chunkIndex = 0
+  for (let y = 0; y < height; y += chunkHeight) {
+    const thisChunkHeight = Math.min(chunkHeight, height - y)
+    const canvas = await html2canvas(element, {
+      scale,
       backgroundColor: '#ffffff',
       useCORS: true,
       allowTaint: true,
@@ -132,17 +146,49 @@ export async function exportMultiSectionPdf(elements, filename, { format = 'a4',
       scrollX: 0,
       scrollY: 0,
       x: 0,
-      y: 0,
-      width: width,
-      height: height,
+      y,
+      width,
+      height: thisChunkHeight,
       windowWidth: width,
       windowHeight: height,
       onclone: (clonedDoc, clonedEl) => {
         isolateClonedElement(clonedDoc, clonedEl, width)
-      }
+      },
     })
-    if (i > 0) pdf.addPage()
+    if (!(isFirstOverall && firstChunk)) pdf.addPage()
     addCanvasPaginated(pdf, canvas, pdfWidth, pdfHeight)
+    firstChunk = false
+    chunkIndex += 1
+    onProgress?.(chunksDoneBefore + chunkIndex, totalChunks)
+  }
+}
+
+export async function exportMultiPagePdf(element, filename, { format = 'a4', orientation = 'portrait', onProgress } = {}) {
+  if (!element) throw new Error('No element provided for PDF export')
+
+  const pdf = new jsPDF({ orientation, unit: 'px', format })
+  const pdfWidth = pdf.internal.pageSize.getWidth()
+  const pdfHeight = pdf.internal.pageSize.getHeight()
+  const totalChunks = countChunks(element, pdfWidth, pdfHeight)
+  await captureElementPaginated(pdf, element, pdfWidth, pdfHeight, { isFirstOverall: true, onProgress, totalChunks })
+  pdf.save(filename)
+}
+
+export async function exportMultiSectionPdf(elements, filename, { format = 'a4', orientation = 'portrait', onProgress } = {}) {
+  const pdf = new jsPDF({ orientation, unit: 'px', format })
+  const pdfWidth = pdf.internal.pageSize.getWidth()
+  const pdfHeight = pdf.internal.pageSize.getHeight()
+
+  const validElements = elements.filter(Boolean)
+  const chunkCounts = validElements.map((el) => countChunks(el, pdfWidth, pdfHeight))
+  const totalChunks = chunkCounts.reduce((sum, c) => sum + c, 0)
+
+  let isFirstOverall = true
+  let chunksDoneBefore = 0
+  for (let i = 0; i < validElements.length; i++) {
+    await captureElementPaginated(pdf, validElements[i], pdfWidth, pdfHeight, { isFirstOverall, onProgress, totalChunks, chunksDoneBefore })
+    isFirstOverall = false
+    chunksDoneBefore += chunkCounts[i]
   }
 
   pdf.save(filename)

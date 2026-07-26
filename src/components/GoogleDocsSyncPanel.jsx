@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import {
   initGoogleAuth,
   googleSignIn,
@@ -13,10 +13,8 @@ import {
   getGoogleDocMetadata,
   appendLcaReportToDoc,
   appendLcaModuleToDoc,
-  overwriteLcaReportInDoc,
-  insertAppPngsToGoogleDoc
+  overwriteLcaReportInDoc
 } from '../lib/googleDocsSync.js'
-import { captureElementToPngDataUrl } from '../lib/pngExport.js'
 import {
   DEFAULT_SLIDES_URL,
   DEFAULT_SLIDES_ID,
@@ -24,22 +22,86 @@ import {
   getGooglePresentationMetadata,
   syncLcaResultsToGoogleSlides
 } from '../lib/googleSlidesSync.js'
+import { appendChartImageToDoc } from '../lib/driveImageUpload.js'
+import { captureElementToPngDataUrl } from '../lib/pngExport.js'
+import BarChart from './BarChart.jsx'
+import LayerSharePieChart from './LayerSharePieChart.jsx'
 import './GoogleDocsSyncPanel.css'
 
-export default function GoogleDocsSyncPanel({ summaries = [], references = [], exportRef = null }) {
+// Modules that have a real chart/diagram to go with their text -- keyed
+// so handleAppendSelectedModule knows which off-screen chart ref(s) to
+// capture after the text append succeeds. Every other module stays
+// text-only, same as before this feature existed.
+const MODULES_WITH_GRAPHICS = new Set([
+  'GLOBAL_GRAPHICS',
+  'ASSEMBLY_WALL', 'ASSEMBLY_FLOOR', 'ASSEMBLY_ROOF',
+  'ASSEMBLY_WINDOW', 'ASSEMBLY_DOOR', 'ASSEMBLY_SKYLIGHT',
+])
+
+export default function GoogleDocsSyncPanel({ summaries = [], references = [] }) {
   const [activeTab, setActiveTab] = useState('docs') // 'docs' | 'slides'
   const [docInput, setDocInput] = useState(DEFAULT_DOC_URL)
   const [slidesInput, setSlidesInput] = useState(DEFAULT_SLIDES_URL)
   const [selectedModule, setSelectedModule] = useState('ALL_THESIS')
-  const [pngSource, setPngSource] = useState('A4_REPORT')
-  const [customImageFile, setCustomImageFile] = useState(null)
-  const [customCaption, setCustomCaption] = useState('')
   const [user, setUser] = useState(null)
   const [token, setToken] = useState(null)
   const [loading, setLoading] = useState(false)
   const [statusMsg, setStatusMsg] = useState(null) // { type: 'success' | 'error' | 'info', text: string }
   const [docMetadata, setDocMetadata] = useState(null)
   const [slidesMetadata, setSlidesMetadata] = useState(null)
+  const [imageUploadStatus, setImageUploadStatus] = useState(null) // string | null, shown while uploading chart(s)
+
+  // Off-screen copies of the same chart components used elsewhere in the
+  // app (BarChart.jsx / LayerSharePieChart.jsx) -- rendered purely so
+  // there's a live DOM node to hand to html2canvas (via
+  // captureElementToPngDataUrl) right before an image-bearing module is
+  // synced. Same "position:fixed, opacity:0.001" off-screen convention as
+  // DeliverablesTab.jsx's A4ReportSection/A3PosterSection export copies.
+  const uValueChartRef = useRef(null)
+  const gwpChartRef = useRef(null)
+  const assemblyPieRef = useRef(null)
+
+  const withData = summaries.filter((s) => s.hasData)
+  const uValueBars = withData.map((s) => ({ label: s.label, value: s.uValue, formattedValue: s.uValue != null ? s.uValue.toFixed(3) : null }))
+  const gwpBars = withData.map((s) => ({ label: s.label, value: s.a1a3KnownCount > 0 ? s.a1a3Total : null, formattedValue: s.a1a3Total != null ? s.a1a3Total.toFixed(1) : null }))
+
+  const selectedAssemblyKey = selectedModule.startsWith('ASSEMBLY_') ? selectedModule.replace('ASSEMBLY_', '').toLowerCase() : null
+  const selectedAssemblySummary = selectedAssemblyKey ? summaries.find((s) => s.key === selectedAssemblyKey) : null
+  const assemblyPieSlices = (selectedAssemblySummary?.layerResults || []).map((l, i) => ({
+    label: l.name || 'Unnamed layer',
+    value: l.a1a3,
+    formattedValue: l.a1a3 != null ? l.a1a3.toFixed(2) : null,
+    key: l.instanceId ?? i,
+  }))
+
+  // Captures whichever chart(s) belong to the module just synced and
+  // appends them to the doc, one at a time -- upload failures here are
+  // reported but never roll back the text that already synced
+  // successfully, since the text is the more important half.
+  async function appendModuleGraphics(docId, moduleKey, accessToken) {
+    if (!MODULES_WITH_GRAPHICS.has(moduleKey)) return { attempted: 0, failed: 0 }
+    const targets = moduleKey === 'GLOBAL_GRAPHICS'
+      ? [
+          { ref: uValueChartRef, filename: 'uvalue-by-assembly.png', aspectRatio: 0.5 },
+          { ref: gwpChartRef, filename: 'gwp-by-assembly.png', aspectRatio: 0.5 },
+        ]
+      : [{ ref: assemblyPieRef, filename: `${moduleKey.toLowerCase()}-layer-share.png`, aspectRatio: 0.7 }]
+
+    let failed = 0
+    for (const { ref, filename, aspectRatio } of targets) {
+      if (!ref.current) continue
+      try {
+        setImageUploadStatus(`Uploading ${filename} to Drive and inserting into the doc...`)
+        const dataUrl = await captureElementToPngDataUrl(ref.current, { scale: 2 })
+        await appendChartImageToDoc(docId, dataUrl, filename, accessToken, { widthPt: 380, aspectRatio })
+      } catch (err) {
+        console.error(`Chart image upload failed (${filename}):`, err)
+        failed += 1
+      }
+    }
+    setImageUploadStatus(null)
+    return { attempted: targets.length, failed }
+  }
 
   useEffect(() => {
     const unsubscribe = initGoogleAuth(
@@ -158,9 +220,17 @@ export default function GoogleDocsSyncPanel({ summaries = [], references = [], e
         return
       }
       const res = await appendLcaModuleToDoc(cleanDocId, summaries, references, selectedModule, accessToken)
+
+      const graphics = await appendModuleGraphics(cleanDocId, selectedModule, accessToken)
+      const graphicsNote = graphics.attempted === 0
+        ? ''
+        : graphics.failed === 0
+          ? ` (+${graphics.attempted} chart image${graphics.attempted === 1 ? '' : 's'})`
+          : ` (${graphics.attempted - graphics.failed}/${graphics.attempted} chart images — ${graphics.failed} failed to upload, text synced fine)`
+
       setStatusMsg({
-        type: 'success',
-        text: `Selected module appended successfully to Google Doc "${res.docTitle || docName}" at ${new Date().toLocaleTimeString()}!`
+        type: graphics.failed > 0 ? 'info' : 'success',
+        text: `Selected module appended successfully to Google Doc "${res.docTitle || docName}"${graphicsNote} at ${new Date().toLocaleTimeString()}!`
       })
     } catch (err) {
       console.error('Append Module Error:', err)
@@ -173,173 +243,11 @@ export default function GoogleDocsSyncPanel({ summaries = [], references = [], e
     }
   }
 
-  async function collectAllVisualItems(updateStatus = () => {}) {
-    const itemsToInsert = []
-
-    // 1. Thermal Performance Bar Charts
-    const chartEl = document.querySelector('.a4-report-charts')
-    if (chartEl) {
-      updateStatus('Capturing Thermal Performance & GWP Assembly Bar Charts...')
-      try {
-        const chartDataUrl = await captureElementToPngDataUrl(chartEl, { scale: 2 })
-        itemsToInsert.push({
-          dataUrl: chartDataUrl,
-          anchorKey: '01_THERMAL_BAR_CHARTS',
-          name: '01_Thermal_Performance_Bar_Charts.png',
-          caption: 'Thermal Transmittance (U-Value) & Embodied Carbon GWP (A1-A3) Assembly Comparison Bar Charts',
-          widthPt: 425,
-          heightPt: 230
-        })
-      } catch (err) {
-        console.warn('Failed capturing bar charts:', err)
-      }
-    }
-
-    // 2. Delphin 1D Hygrothermal Box & U-value Table
-    const delphinEl = document.querySelector('.a4-report-preview-box')
-    if (delphinEl) {
-      updateStatus('Capturing Delphin 1D Hygrothermal Analysis & U-value Table...')
-      try {
-        const delphinDataUrl = await captureElementToPngDataUrl(delphinEl, { scale: 2 })
-        itemsToInsert.push({
-          dataUrl: delphinDataUrl,
-          anchorKey: '02_DELPHIN_1D',
-          name: '02_Delphin_1D_Hygrothermal_Analysis.png',
-          caption: 'DIN EN ISO 6946 Thermal Performance Table & Delphin 1D Transient Moisture Modeling (WUFI / Delphin 5/6)',
-          widthPt: 425,
-          heightPt: 260
-        })
-      } catch (err) {
-        console.warn('Failed capturing Delphin 1D box:', err)
-      }
-    }
-
-    // 3. Whole-Building Lifecycle Stage & Supplier Radius Breakdown Chart
-    const singleChartEl = document.querySelector('.a4-report-chart-single')
-    if (singleChartEl) {
-      updateStatus('Capturing Lifecycle Stage & Supplier Radius Distribution Charts...')
-      try {
-        const singleChartDataUrl = await captureElementToPngDataUrl(singleChartEl, { scale: 2 })
-        itemsToInsert.push({
-          dataUrl: singleChartDataUrl,
-          anchorKey: '03_LIFECYCLE_STAGE_CHARTS',
-          name: '03_Lifecycle_Stage_And_Supplier_Radius_Charts.png',
-          caption: 'Whole-Building Lifecycle Carbon Stage Distribution (Modules A1-D) & EPD Supplier Geography Radius',
-          widthPt: 425,
-          heightPt: 230
-        })
-      } catch (err) {
-        console.warn('Failed capturing lifecycle chart:', err)
-      }
-    }
-
-    // 4. Assembly Section Diagrams (Wall, Floor, Roof, Window, Door, Skylight typical section diagrams)
-    const sectionSheets = document.querySelectorAll('.section-sheet')
-    if (sectionSheets && sectionSheets.length > 0) {
-      let sIdx = 1
-      const ASSEMBLY_KEYS = ['WALL', 'FLOOR', 'ROOF', 'SKYLIGHT', 'WINDOW', 'DOOR']
-      for (const sheet of sectionSheets) {
-        try {
-          const titleEl = sheet.querySelector('.section-sheet-heading, h2, h3, header')
-          const sheetTitle = titleEl ? titleEl.innerText.trim() : `Assembly Section #${sIdx}`
-          const cleanName = sheetTitle.replace(/[^a-zA-Z0-9_-]+/g, '_')
-          const matchedKey = ASSEMBLY_KEYS.find(k => sheetTitle.toUpperCase().includes(k)) || ASSEMBLY_KEYS[sIdx - 1] || 'WALL'
-          updateStatus(`Capturing Assembly Section Diagram ${sIdx}/${sectionSheets.length}: ${sheetTitle}...`)
-          const dataUrl = await captureElementToPngDataUrl(sheet, { scale: 2 })
-          itemsToInsert.push({
-            dataUrl,
-            anchorKey: `SECTION_${matchedKey}`,
-            name: `04_Assembly_Section_${sIdx}_${cleanName}.png`,
-            caption: `Assembly Specification Diagram: ${sheetTitle}`,
-            widthPt: 425,
-            heightPt: 280
-          })
-          sIdx++
-        } catch (sErr) {
-          console.warn('Failed capturing section sheet:', sErr)
-        }
-      }
-    }
-
-    // 5. Individual Material Fiches Techniques (Each cataloged material in Model 1 as a standalone PNG)
-    const rawFicheNodes = document.querySelectorAll('.a4-fiche-visual-card, .fiche-sheet')
-    if (rawFicheNodes && rawFicheNodes.length > 0) {
-      let fIdx = 1
-      for (const rawNode of rawFicheNodes) {
-        try {
-          // If outer card, target inner .fiche-sheet for clean capture without UI headers/buttons
-          const targetNode = rawNode.querySelector('.fiche-sheet') || rawNode
-          const cardTitleEl = targetNode.querySelector('h3, .fiche-product-name, header') || rawNode.querySelector('h3, .fiche-product-name')
-          const cardTitle = cardTitleEl ? cardTitleEl.innerText.trim() : `Fiche #${fIdx}`
-          const cleanName = cardTitle.replace(/[^a-zA-Z0-9_-]+/g, '_')
-          updateStatus(`Capturing Fiche Technique ${fIdx}/${rawFicheNodes.length}: ${cardTitle}...`)
-          const dataUrl = await captureElementToPngDataUrl(targetNode, { scale: 2 })
-          itemsToInsert.push({
-            dataUrl,
-            anchorKey: `FICHE_#${fIdx}`,
-            name: `Fiche_${fIdx}_${cleanName}.png`,
-            caption: `Annex A — Technical Fiche Sheet #${fIdx}: ${cardTitle}`,
-            widthPt: 425,
-            heightPt: 310
-          })
-          fIdx++
-        } catch (fErr) {
-          console.warn(`Failed capturing fiche card ${fIdx}:`, fErr)
-        }
-      }
-    } else {
-      // Fallback: If individual cards are not mounted, capture the main annex sheet container
-      const fichesEl = document.querySelector('.a4-report-annex')
-      if (fichesEl) {
-        updateStatus('Capturing Annex A Material Fiche Technical Sheets...')
-        try {
-          const fichesDataUrl = await captureElementToPngDataUrl(fichesEl, { scale: 2 })
-          itemsToInsert.push({
-            dataUrl: fichesDataUrl,
-            name: 'Annex_A_Material_Fiches_Catalog.png',
-            caption: 'Annex A: Material Fiches Technical Sheets & Specification Catalog',
-            widthPt: 480,
-            heightPt: 450
-          })
-        } catch (err) {
-          console.warn('Failed capturing fiches container:', err)
-        }
-      }
-    }
-
-    if (itemsToInsert.length === 0) {
-      // Absolute fallback: full monograph report snapshot
-      const targetEl = document.querySelector('.a4-report-sheet') || document.querySelector('.deliverable-preview')
-      if (targetEl) {
-        updateStatus('Capturing Full A4 Report Monograph Snapshot...')
-        const reportDataUrl = await captureElementToPngDataUrl(targetEl, { scale: 2, width: '800px' })
-        itemsToInsert.push({
-          dataUrl: reportDataUrl,
-          name: 'A4_Report_Monograph.png',
-          caption: 'Full Monograph LCA Report with Graphs & Tables',
-          widthPt: 480,
-          heightPt: 600
-        })
-      }
-    }
-
-    return itemsToInsert
-  }
-
-  async function autoCaptureAndEmbedVisuals(docId, accessToken) {
-    const itemsToInsert = await collectAllVisualItems((msg) => setStatusMsg({ type: 'info', text: msg }))
-
-    if (itemsToInsert.length > 0) {
-      setStatusMsg({ type: 'info', text: `Uploading ${itemsToInsert.length} high-resolution graphics to Google Drive and embedding into Google Doc...` })
-      await insertAppPngsToGoogleDoc(docId, itemsToInsert, accessToken)
-    }
-  }
-
   async function handleSyncFullThesis() {
     const docName = docMetadata?.title || cleanDocId
 
     setLoading(true)
-    setStatusMsg({ type: 'info', text: 'Syncing full thesis text + auto-importing all visual graphs, charts & tables behind the scenes into Google Docs...' })
+    setStatusMsg({ type: 'info', text: 'Syncing full thesis with Google Docs named heading styles & dynamic outline...' })
     try {
       const accessToken = await ensureToken()
       if (!accessToken) {
@@ -347,19 +255,15 @@ export default function GoogleDocsSyncPanel({ summaries = [], references = [], e
         return
       }
       const res = await overwriteLcaReportInDoc(cleanDocId, summaries, references, accessToken)
-
-      setStatusMsg({ type: 'info', text: 'Text synced! Auto-capturing and uploading high-res PNG graphs, tables, and fiches to Google Drive...' })
-      await autoCaptureAndEmbedVisuals(cleanDocId, accessToken)
-
       setStatusMsg({
         type: 'success',
-        text: `🎉 Full Thesis LCA Report + ALL visual graphs, bar charts, tables & material fiches successfully imported behind the scenes into Google Doc "${res.docTitle || docName}" at ${new Date().toLocaleTimeString()}!`
+        text: `Full Thesis LCA Report synced with automatic heading structure into Google Doc "${res.docTitle || docName}" at ${new Date().toLocaleTimeString()}!`
       })
     } catch (err) {
       console.error('Sync Thesis Error:', err)
       setStatusMsg({
         type: 'error',
-        text: `Failed to sync full thesis & graphs: ${err.message}`
+        text: `Failed to sync full thesis: ${err.message}`
       })
     } finally {
       setLoading(false)
@@ -370,7 +274,7 @@ export default function GoogleDocsSyncPanel({ summaries = [], references = [], e
     const docName = docMetadata?.title || cleanDocId
 
     setLoading(true)
-    setStatusMsg({ type: 'info', text: 'Resetting document state and re-importing latest text + visual graphs & charts behind the scenes into Google Doc...' })
+    setStatusMsg({ type: 'info', text: 'Deleting wrong version and pulling latest clean LCA report into Google Doc...' })
     try {
       const accessToken = await ensureToken()
       if (!accessToken) {
@@ -378,13 +282,9 @@ export default function GoogleDocsSyncPanel({ summaries = [], references = [], e
         return
       }
       const res = await overwriteLcaReportInDoc(cleanDocId, summaries, references, accessToken)
-
-      setStatusMsg({ type: 'info', text: 'Document reset! Auto-capturing and uploading high-res PNG graphs, tables, and fiches...' })
-      await autoCaptureAndEmbedVisuals(cleanDocId, accessToken)
-
       setStatusMsg({
         type: 'success',
-        text: `🎉 Successfully reset document! Imported clean text + ALL visual graphs, bar charts, tables & fiches into Google Doc "${res.docTitle || docName}" at ${new Date().toLocaleTimeString()}.`
+        text: `Successfully deleted wrong version! Pulled and restored latest clean LCA Report state into Google Doc "${res.docTitle || docName}" at ${new Date().toLocaleTimeString()}.`
       })
     } catch (err) {
       console.error('Pull Clean Version Error:', err)
@@ -408,138 +308,6 @@ export default function GoogleDocsSyncPanel({ summaries = [], references = [], e
       })
     } catch (e) {
       setStatusMsg({ type: 'error', text: `Clipboard copy failed: ${e.message}` })
-    }
-  }
-
-  async function handleInsertPngToDoc() {
-    const docName = docMetadata?.title || cleanDocId
-    setLoading(true)
-    setStatusMsg({ type: 'info', text: 'Capturing PNG image and uploading to Google Drive...' })
-
-    try {
-      const accessToken = await ensureToken()
-      if (!accessToken) {
-        setStatusMsg({ type: 'error', text: 'Sign in to Google was cancelled or not completed.' })
-        return
-      }
-
-      let pngDataUrl = null
-      let imageName = 'lca-app-export.png'
-      let defaultCaption = ''
-      let widthPt = 450
-      let heightPt = 320
-
-      if (pngSource === 'BAR_CHARTS') {
-        const targetEl = document.querySelector('.a4-report-charts') || document.querySelector('.a4-report-chart-single') || document.querySelector('.a4-report-sheet')
-        if (!targetEl) throw new Error('Bar Charts element is not currently mounted for capture.')
-        pngDataUrl = await captureElementToPngDataUrl(targetEl, { scale: 2 })
-        imageName = 'Thermal_Performance_And_GWP_Bar_Charts.png'
-        defaultCaption = 'Thermal Performance (U-value) & GWP A1-A3 Assembly Comparison Bar Charts'
-        widthPt = 480
-        heightPt = 260
-      } else if (pngSource === 'U_VALUE_TABLE') {
-        const targetEl = document.querySelector('.a4-report-preview-box') || document.querySelector('.a4-report-table-wrapper') || document.querySelector('.a4-report-sheet')
-        if (!targetEl) throw new Error('Thermal Performance U-value Table element is not currently mounted.')
-        pngDataUrl = await captureElementToPngDataUrl(targetEl, { scale: 2 })
-        imageName = 'Thermal_Performance_UValue_Table_And_Delphin_Analysis.png'
-        defaultCaption = 'Thermal Performance (U-value) DIN EN ISO 6946 Table & Delphin 1D Hygrothermal Analysis'
-        widthPt = 480
-        heightPt = 300
-      } else if (pngSource === 'FICHES_SHEET') {
-        const targetEl = document.querySelector('.a4-report-annex') || document.querySelector('.fiche-sheet') || document.querySelector('.a4-report-sheet')
-        if (!targetEl) throw new Error('Material Fiches element is not currently mounted for capture.')
-        pngDataUrl = await captureElementToPngDataUrl(targetEl, { scale: 2 })
-        imageName = 'Annex_A_Material_Fiche_Specifications.png'
-        defaultCaption = 'Annex A: Material Fiche Technical Data Sheets & EPD Specifications'
-        widthPt = 480
-        heightPt = 400
-      } else if (pngSource === 'A4_REPORT') {
-        const targetEl = exportRef?.current || document.querySelector('.a4-report-sheet') || document.querySelector('.deliverable-preview')
-        if (!targetEl) throw new Error('A4 Report Draft element is not currently mounted for capture.')
-        pngDataUrl = await captureElementToPngDataUrl(targetEl, { scale: 2, width: '800px' })
-        imageName = 'A4_Report_Draft_Snapshot.png'
-        defaultCaption = 'A4 Full Monograph Report Snapshot with Graphs & Tables'
-        widthPt = 480
-        heightPt = 600
-      } else if (pngSource === 'SECTION_DIAGRAM') {
-        const targetEl = document.querySelector('.section-sheet') || document.querySelector('.deliverable-preview')
-        if (!targetEl) throw new Error('Section Diagram element is not currently mounted for capture.')
-        pngDataUrl = await captureElementToPngDataUrl(targetEl, { scale: 2 })
-        imageName = 'Assembly_Section_Diagram.png'
-        defaultCaption = 'LCA Assembly Section Specification Diagram'
-        widthPt = 480
-        heightPt = 320
-      } else if (pngSource === 'CUSTOM_FILE') {
-        if (!customImageFile) throw new Error('Please select a PNG image file from your computer.')
-        pngDataUrl = await new Promise((resolve, reject) => {
-          const reader = new FileReader()
-          reader.onload = () => resolve(reader.result)
-          reader.onerror = () => reject(new Error('Failed reading selected image file.'))
-          reader.readAsDataURL(customImageFile)
-        })
-        imageName = customImageFile.name
-        defaultCaption = customImageFile.name
-      }
-
-      if (!pngDataUrl) throw new Error('Could not generate or read PNG image data.')
-
-      const item = {
-        dataUrl: pngDataUrl,
-        name: imageName,
-        caption: customCaption || defaultCaption,
-        widthPt,
-        heightPt
-      }
-
-      const res = await insertAppPngsToGoogleDoc(cleanDocId, [item], accessToken)
-      setStatusMsg({
-        type: 'success',
-        text: `🖼️ PNG Image inserted into Google Doc "${res.docTitle || docName}"! Uploaded to Google Drive and inserted inline into your document.`
-      })
-    } catch (err) {
-      console.error('Insert PNG Error:', err)
-      setStatusMsg({
-        type: 'error',
-        text: `Failed to insert PNG image: ${err.message}`
-      })
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  async function handleAutoSyncAllVisuals() {
-    const docName = docMetadata?.title || cleanDocId
-    setLoading(true)
-    setStatusMsg({ type: 'info', text: 'Auto-capturing all individual graphs, tables, assembly sections, and fiches techniques as high-resolution PNGs...' })
-
-    try {
-      const accessToken = await ensureToken()
-      if (!accessToken) {
-        setStatusMsg({ type: 'error', text: 'Sign in to Google was cancelled or not completed.' })
-        return
-      }
-
-      const itemsToInsert = await collectAllVisualItems((msg) => setStatusMsg({ type: 'info', text: msg }))
-
-      if (itemsToInsert.length === 0) {
-        throw new Error('No visual report elements or fiches were found to capture. Please ensure the Deliverables tab is open.')
-      }
-
-      setStatusMsg({ type: 'info', text: `Uploading ${itemsToInsert.length} high-resolution graphics & fiches techniques to Google Drive and embedding into Google Doc...` })
-      const res = await insertAppPngsToGoogleDoc(cleanDocId, itemsToInsert, accessToken)
-
-      setStatusMsg({
-        type: 'success',
-        text: `🎉 Successfully inserted ${res.count} visual graphics, charts, assembly section diagrams, and individual fiches techniques into Google Doc "${res.docTitle || docName}"!`
-      })
-    } catch (err) {
-      console.error('Auto Sync Visuals Error:', err)
-      setStatusMsg({
-        type: 'error',
-        text: `Failed to insert visual graphics & fiches: ${err.message}`
-      })
-    } finally {
-      setLoading(false)
     }
   }
 
@@ -723,76 +491,6 @@ export default function GoogleDocsSyncPanel({ summaries = [], references = [], e
               💡 Modular sync appends only your chosen element (e.g. wall graphic diagram) right where you want it without touching or overwriting the rest of your document.
             </p>
           </div>
-
-          {/* PNG Image Export & Insertion Block */}
-          <div style={{ marginTop: '14px', background: '#f0f9ff', padding: '12px 14px', borderRadius: '8px', border: '1px solid #bae6fd' }}>
-            <label className="gdoc-input-label" style={{ color: '#0369a1', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
-              🖼️ Insert App PNGs / Diagrams into Google Doc:
-            </label>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginTop: '8px' }}>
-              <div>
-                <span style={{ fontSize: '0.78rem', fontWeight: 600, color: '#334155', display: 'block' }}>Select PNG Source:</span>
-                <select
-                  className="gdoc-input"
-                  value={pngSource}
-                  onChange={(e) => setPngSource(e.target.value)}
-                  style={{ marginTop: '4px', background: '#ffffff', cursor: 'pointer', fontWeight: 600 }}
-                >
-                  <option value="BAR_CHARTS">📊 Thermal Performance & GWP Comparison Bar Charts</option>
-                  <option value="U_VALUE_TABLE">📐 Thermal Performance (U-value) Table & Delphin 1D Analysis</option>
-                  <option value="FICHES_SHEET">📑 Annex A Material Fiche Technical Data Sheets</option>
-                  <option value="A4_REPORT">📸 Full Monograph A4 Report Snapshot (with Graphs & Tables)</option>
-                  <option value="SECTION_DIAGRAM">🧱 Assembly Section Specification Diagram</option>
-                  <option value="CUSTOM_FILE">📁 Custom PNG Image File from Computer</option>
-                </select>
-              </div>
-              <div>
-                <span style={{ fontSize: '0.78rem', fontWeight: 600, color: '#334155', display: 'block' }}>Figure Caption (Optional):</span>
-                <input
-                  type="text"
-                  className="gdoc-input"
-                  placeholder="e.g. Figure 1: Exterior Wall Layer Section"
-                  value={customCaption}
-                  onChange={(e) => setCustomCaption(e.target.value)}
-                  style={{ marginTop: '4px', background: '#ffffff' }}
-                />
-              </div>
-            </div>
-
-            {pngSource === 'CUSTOM_FILE' && (
-              <div style={{ marginTop: '10px', background: '#ffffff', padding: '8px 12px', borderRadius: '6px', border: '1px dashed #0284c7' }}>
-                <span style={{ fontSize: '0.78rem', fontWeight: 600, color: '#0284c7', display: 'block', marginBottom: '4px' }}>Choose PNG File:</span>
-                <input
-                  type="file"
-                  accept="image/png,image/jpeg,image/webp"
-                  onChange={(e) => setCustomImageFile(e.target.files[0] || null)}
-                  style={{ fontSize: '0.82rem', color: '#334155' }}
-                />
-              </div>
-            )}
-
-            <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <button
-                type="button"
-                className="gdoc-btn gdoc-btn--primary"
-                onClick={handleInsertPngToDoc}
-                disabled={loading}
-                style={{ background: '#0284c7', borderColor: '#0284c7', width: '100%', justifyContent: 'center', padding: '10px 14px' }}
-              >
-                🖼️ Upload & Insert Selected Graphic / Graph into Google Doc
-              </button>
-
-              <button
-                type="button"
-                className="gdoc-btn gdoc-btn--primary"
-                onClick={handleAutoSyncAllVisuals}
-                disabled={loading}
-                style={{ background: '#15803d', borderColor: '#15803d', width: '100%', justifyContent: 'center', padding: '12px 14px', fontWeight: 700 }}
-              >
-                📊 Auto-Capture & Insert ALL Visual Graphs, Tables & Fiche Cards into Google Doc
-              </button>
-            </div>
-          </div>
         </div>
       ) : (
         <div className="gdoc-doc-input-group">
@@ -962,6 +660,33 @@ export default function GoogleDocsSyncPanel({ summaries = [], references = [], e
           {statusMsg.text}
         </div>
       )}
+      {imageUploadStatus && (
+        <div className="gdoc-status-msg gdoc-status-msg--info">{imageUploadStatus}</div>
+      )}
+
+      {/* Off-screen chart copies, captured to PNG and uploaded to Drive
+          when an image-bearing module (GLOBAL_GRAPHICS / ASSEMBLY_*) is
+          synced — see appendModuleGraphics above. Never shown to the
+          user; exists purely so html2canvas has a real, laid-out DOM
+          node to capture, same convention as DeliverablesTab.jsx's
+          export-only report/poster copies. */}
+      <div style={{ position: 'fixed', left: 0, top: 0, width: '600px', zIndex: -9999, opacity: 0.001, pointerEvents: 'none', background: '#ffffff' }}>
+        <div ref={uValueChartRef}>
+          <BarChart title="U-value by assembly" unit="W/m²K" bars={uValueBars} />
+        </div>
+        <div ref={gwpChartRef}>
+          <BarChart title="GWP A1-A3 by assembly" unit="kg CO₂e" bars={gwpBars} />
+        </div>
+        {selectedAssemblySummary && (
+          <div ref={assemblyPieRef}>
+            <LayerSharePieChart
+              title={`${selectedAssemblySummary.label} — share of GWP A1-A3 by layer`}
+              unit="kg CO₂e"
+              slices={assemblyPieSlices}
+            />
+          </div>
+        )}
+      </div>
     </div>
   )
 }

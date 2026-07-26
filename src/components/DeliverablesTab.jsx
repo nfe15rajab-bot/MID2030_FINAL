@@ -217,15 +217,20 @@ function A4ReportSection() {
   // not a different pipeline" approach as SectionPdfButton below.
   const exportRef = useRef(null)
   const [exporting, setExporting] = useState(false)
+  const [exportProgress, setExportProgress] = useState(null) // { current, total } | null
   const [exportingDocx, setExportingDocx] = useState(false)
 
   async function handleExport() {
     if (!exportRef.current) return
     setExporting(true)
+    setExportProgress(null)
     try {
-      await exportMultiPagePdf(exportRef.current, 'a4-report-draft.pdf')
+      await exportMultiPagePdf(exportRef.current, 'a4-report-draft.pdf', {
+        onProgress: (current, total) => setExportProgress({ current, total }),
+      })
     } finally {
       setExporting(false)
+      setExportProgress(null)
     }
   }
 
@@ -245,7 +250,9 @@ function A4ReportSection() {
         <StatusBadge status={hasAnyData ? 'ready' : 'blocked'} />
         {!hasAnyData && <span className="deliverable-reason">no assemblies have saved layers yet</span>}
         <button type="button" onClick={handleExport} disabled={exporting || !hasAnyData}>
-          {exporting ? 'Generating PDF…' : 'Export A4 Report Draft PDF'}
+          {exporting
+            ? `Generating PDF… ${exportProgress ? `(page batch ${exportProgress.current}/${exportProgress.total})` : ''}`
+            : 'Export A4 Report Draft PDF'}
         </button>
         <button type="button" onClick={handleExportDocx} disabled={exportingDocx || !hasAnyData}>
           {exportingDocx ? 'Generating DOCX…' : 'Export A4 Report Draft DOCX'}
@@ -257,7 +264,7 @@ function A4ReportSection() {
         be opened and rewritten in Word before submission. You can also sync or append the full LCA Report directly to your Google Document below.
       </p>
 
-      <GoogleDocsSyncPanel summaries={summaries} references={references} exportRef={exportRef} />
+      <GoogleDocsSyncPanel summaries={summaries} references={references} />
 
       <div className="deliverable-preview">
         <A4ReportDraft summaries={summaries} references={references} />

@@ -23,6 +23,7 @@ import SectionPreview from './SectionPreview.jsx'
 import FicheTechniquePanel from './FicheTechniquePanel.jsx'
 import RevitExportPanel from './RevitExportPanel.jsx'
 import HinalMaterialAuditReport from './HinalMaterialAuditReport.jsx'
+import GoogleDocsSyncPanel from './GoogleDocsSyncPanel.jsx'
 import html2canvas from 'html2canvas'
 import { jsPDF } from 'jspdf'
 import './DeliverablesTab.css'
@@ -221,8 +222,11 @@ function A4ReportSection() {
       <p className="deliverable-note">
         Same content, two formats: the PDF is a snapshot of the styled preview below (html2canvas+jsPDF);
         the DOCX is built directly as real editable text/tables (the <code>docx</code> package) so it can
-        be opened and rewritten in Word before submission.
+        be opened and rewritten in Word before submission. You can also sync or append the full LCA Report directly to your Google Document below.
       </p>
+
+      <GoogleDocsSyncPanel summaries={summaries} references={references} />
+
       <div className="deliverable-preview">
         <A4ReportDraft summaries={summaries} references={references} />
       </div>

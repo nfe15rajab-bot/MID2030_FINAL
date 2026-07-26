@@ -8,11 +8,12 @@ import { gwpTotalForLayers } from '../lib/gwpPerM2.js'
 import { getEpdReferenceList } from '../lib/epdReferenceList.js'
 import { getFullCompletenessReport } from '../lib/lcaAnalysis.js'
 import { findProvidersForMaterial } from '../lib/geo.js'
-import { exportMultiPagePdf, exportMultiSectionPdf } from '../lib/multiPagePdfExport.js'
+import { exportMultiPagePdf, exportMultiSectionPdf, isolateClonedElement } from '../lib/multiPagePdfExport.js'
 import { exportA4Docx } from '../lib/a4DocxExport.js'
 import { getSpreadsheetRows, getSpreadsheetMeta } from '../lib/spreadsheetData.js'
 import { exportSpreadsheetExcel, exportReferenceMatchingExcel } from '../lib/spreadsheetExcelExport.js'
 import { embedSectionDataInPdf } from '../lib/pdfSessionAttachment.js'
+import { exportAllAnnexVisualsAsZip } from '../lib/pngExport.js'
 import providers from '../../database/providers.json'
 import referenceLocations from '../../database/reference-locations.json'
 import A4ReportDraft from './A4ReportDraft.jsx'
@@ -74,7 +75,15 @@ function SectionPdfButton({ assemblyKey, label }) {
     if (!ref.current) return
     setExporting(true)
     try {
-      const canvas = await html2canvas(ref.current, { scale: 2, backgroundColor: '#ffffff' })
+      const canvas = await html2canvas(ref.current, {
+        scale: 2,
+        backgroundColor: '#ffffff',
+        useCORS: true,
+        allowTaint: true,
+        onclone: (clonedDoc, clonedEl) => {
+          isolateClonedElement(clonedDoc, clonedEl, 800)
+        }
+      })
       const imgData = canvas.toDataURL('image/png')
       const pdf = new jsPDF({ orientation: 'landscape', unit: 'px', format: [canvas.width, canvas.height] })
       pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height)
@@ -108,7 +117,7 @@ function SectionPdfButton({ assemblyKey, label }) {
       {/* Off-screen, always rendered so the ref is capturable on click —
           same "hidden via positioning, not unmounted" reasoning as
           ModelViewer in App.jsx. */}
-      <div style={{ position: 'fixed', left: '-9999px', top: 0 }}>
+      <div style={{ position: 'fixed', left: 0, top: 0, width: '800px', zIndex: -9999, opacity: 0.001, pointerEvents: 'none', background: '#ffffff' }}>
         <SectionPreview
           ref={ref}
           section={label}
@@ -136,7 +145,19 @@ function SectionPdfButton({ assemblyKey, label }) {
 function FicheDeliverablesSection() {
   const entries = useMemo(() => getFicheDeliverables(), [])
   const [openKey, setOpenKey] = useState(null)
+  const [downloadingZip, setDownloadingZip] = useState(false)
+  const containerRef = useRef(null)
   const researchedCount = entries.filter((e) => e.hasData).length
+
+  async function handleDownloadAllZip() {
+    if (!containerRef.current) return
+    setDownloadingZip(true)
+    try {
+      await exportAllAnnexVisualsAsZip(containerRef, [], 'MID2030_Material_Fiches_PNG.zip')
+    } finally {
+      setDownloadingZip(false)
+    }
+  }
 
   return (
     <div className="deliverable-block">
@@ -144,29 +165,40 @@ function FicheDeliverablesSection() {
         <span className="deliverable-name">Fiche technique sheets</span>
         <StatusBadge status={entries.length > 0 ? 'ready' : 'blocked'} />
         {entries.length === 0 && <span className="deliverable-reason">no saved layers yet</span>}
+        {entries.length > 0 && (
+          <button
+            type="button"
+            onClick={handleDownloadAllZip}
+            disabled={downloadingZip}
+            style={{ marginLeft: 'auto', background: 'var(--accent, #2563eb)', color: '#ffffff', fontWeight: 600, padding: '6px 14px', border: 'none', borderRadius: '6px', cursor: 'pointer' }}
+          >
+            {downloadingZip ? 'Packing ZIP…' : '📦 Export All Fiches as PNG ZIP'}
+          </button>
+        )}
       </div>
       {entries.length > 0 && (
         <p className="deliverable-note">
-          One fiche per material — {researchedCount}/{entries.length} have some research filled in
-          already. Open one below to review, keep researching, or export its PDF (same fiche
-          editor/export as the Providers tab).
+          One fiche per material — {researchedCount}/{entries.length} have research cataloged.
+          Open any fiche to review, edit, or save / copy as high-resolution PNG image.
         </p>
       )}
-      {entries.map((e) => {
-        const { closestToSite } = findProvidersForMaterial(e.material.id, providers, referenceLocations)
-        const isOpen = openKey === e.key
-        return (
-          <div key={e.key} className="fiche-deliverable-row">
-            <button type="button" onClick={() => setOpenKey(isOpen ? null : e.key)}>
-              {isOpen ? 'Hide' : 'Open'} {e.label} <span className="section-badge">{e.section}</span>
-            </button>
-            <span className={`fiche-deliverable-status fiche-deliverable-status--${e.hasData ? 'ready' : 'pending'}`}>
-              {e.hasData ? 'researched' : 'not yet researched'}
-            </span>
-            {isOpen && <FicheTechniquePanel material={e.material} closestToSite={closestToSite} />}
-          </div>
-        )
-      })}
+      <div ref={containerRef}>
+        {entries.map((e) => {
+          const { closestToSite } = findProvidersForMaterial(e.material.id, providers, referenceLocations)
+          const isOpen = openKey === e.key
+          return (
+            <div key={e.key} className="fiche-deliverable-row">
+              <button type="button" onClick={() => setOpenKey(isOpen ? null : e.key)}>
+                {isOpen ? 'Hide' : 'Open'} {e.label} <span className="section-badge">{e.section}</span>
+              </button>
+              <span className={`fiche-deliverable-status fiche-deliverable-status--${e.hasData ? 'ready' : 'pending'}`}>
+                {e.hasData ? 'researched' : 'not yet researched'}
+              </span>
+              {isOpen && <FicheTechniquePanel material={e.material} closestToSite={closestToSite} />}
+            </div>
+          )
+        })}
+      </div>
     </div>
   )
 }
@@ -230,7 +262,7 @@ function A4ReportSection() {
       <div className="deliverable-preview">
         <A4ReportDraft summaries={summaries} references={references} />
       </div>
-      <div style={{ position: 'fixed', left: '-9999px', top: 0 }}>
+      <div style={{ position: 'fixed', left: 0, top: 0, width: '800px', zIndex: -9999, opacity: 0.001, pointerEvents: 'none', background: '#ffffff' }}>
         <A4ReportDraft ref={exportRef} summaries={summaries} references={references} />
       </div>
     </div>
@@ -291,7 +323,7 @@ function A3PosterSection() {
       <div className="deliverable-preview a3-poster-preview">
         <A3PosterDraft summaries={summaries} records={records} references={references} />
       </div>
-      <div style={{ position: 'fixed', left: '-9999px', top: 0 }}>
+      <div style={{ position: 'fixed', left: 0, top: 0, width: '1200px', zIndex: -9999, opacity: 0.001, pointerEvents: 'none', background: '#ffffff' }}>
         <A3PosterDraft
           summaries={summaries}
           records={records}

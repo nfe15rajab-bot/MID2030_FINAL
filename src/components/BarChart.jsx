@@ -1,6 +1,7 @@
 import React, { useRef, useState } from 'react'
 import html2canvas from 'html2canvas'
 import { jsPDF } from 'jspdf'
+import { downloadElementAsPng, copyElementPngToClipboard } from '../lib/pngExport.js'
 
 // Single-series bar chart, plain SVG, no charting library — matches this
 // app's existing minimal aesthetic (one accent color throughout). Mark
@@ -13,47 +14,50 @@ import { jsPDF } from 'jspdf'
 // zero-height bar — a real 0 W/m²K or 0 kg CO2e would misstate an
 // assembly that's simply unresearched, not actually zero.
 const BAR_WIDTH = 22
-// Category labels are rotated (see the category <text> below) rather than
-// horizontal — a wall/roof assembly can have up to 9 layers, and horizontal
-// labels under a 22px-wide bar started overlapping their neighbors well
-// before that (verified directly against a 9-layer wall). Rotating trades
-// horizontal crowding for vertical room; BAR_GAP and the angle below were
-// both widened/steepened from a first pass that still left ~10px of
-// diagonal overlap between adjacent 13-character labels — verified via
-// each label's actual rendered (post-rotation) bounding box, not just the
-// pre-rotation layout box, since a rotated element's untransformed bbox
-// doesn't reflect what's visually overlapping.
 const BAR_GAP = 44
 const CHART_HEIGHT = 160
 const LABEL_HEIGHT = 68
 const LABEL_ROTATION_DEG = -48
 
-// exportable: opt-in (see AssemblyAnalysisTab.jsx) rather than always-on —
-// A4ReportDraft.jsx renders this same component straight into a page that
-// itself gets captured/exported as a whole (see A3PosterDraft's pattern);
-// a button baked into that printed sheet would be both meaningless (mid-
-// export, nothing to click) and visually wrong to have appear in the PDF.
 export default function BarChart({ title, unit, bars, exportable = false }) {
   const [hoverIndex, setHoverIndex] = useState(null)
   const [exporting, setExporting] = useState(false)
+  const [copying, setCopying] = useState(false)
   const containerRef = useRef(null)
 
   const knownValues = bars.filter((b) => b.value != null).map((b) => b.value)
   const maxValue = knownValues.length > 0 ? Math.max(...knownValues) : 1
   const scale = (v) => (maxValue > 0 ? (v / maxValue) * (CHART_HEIGHT - 24) : 0)
 
-  // Selective direct labels (dataviz skill: "never a number on every
-  // point" — floods the chart and stops being read). A handful of bars
-  // (≤4, e.g. per-assembly rollups) is comfortable labeled in full; once
-  // a chart is showing a full layer stack (up to 10 for a wall), only the
-  // two extremes — biggest emitter, biggest carbon-store — get a direct
-  // label. Everything else still has its value one hover away.
   const minValue = knownValues.length > 0 ? Math.min(...knownValues) : null
   const labelAll = bars.length <= 4
   const shouldLabel = (bar) => labelAll || bar.value === maxValue || bar.value === minValue
 
   const width = bars.length * (BAR_WIDTH + BAR_GAP) + BAR_GAP
   const totalHeight = CHART_HEIGHT + LABEL_HEIGHT
+
+  async function handleExportPng() {
+    if (!containerRef.current) return
+    setExporting(true)
+    try {
+      const cleanTitle = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
+      await downloadElementAsPng(containerRef.current, `${cleanTitle || 'chart'}.png`, { scale: 3 })
+    } finally {
+      setExporting(false)
+    }
+  }
+
+  async function handleCopyPng() {
+    if (!containerRef.current) return
+    setCopying(true)
+    try {
+      await copyElementPngToClipboard(containerRef.current, { scale: 3 })
+    } catch (err) {
+      console.warn('Clipboard copy failed:', err)
+    } finally {
+      setCopying(false)
+    }
+  }
 
   async function handleExportPdf() {
     if (!containerRef.current) return
@@ -75,9 +79,17 @@ export default function BarChart({ title, unit, bars, exportable = false }) {
       <div className="bar-chart-header">
         <h4 className="bar-chart-title">{title}{unit ? ` (${unit})` : ''}</h4>
         {exportable && (
-          <button type="button" className="bar-chart-export-button" onClick={handleExportPdf} disabled={exporting}>
-            {exporting ? 'Exporting…' : 'Export PDF'}
-          </button>
+          <div style={{ display: 'flex', gap: '6px' }}>
+            <button type="button" className="bar-chart-export-button" onClick={handleExportPng} disabled={exporting}>
+              {exporting ? 'Exporting…' : '📸 Save PNG'}
+            </button>
+            <button type="button" className="bar-chart-export-button" onClick={handleCopyPng} disabled={copying}>
+              {copying ? 'Copying…' : '📋 Copy PNG'}
+            </button>
+            <button type="button" className="bar-chart-export-button" onClick={handleExportPdf} disabled={exporting}>
+              PDF
+            </button>
+          </div>
         )}
       </div>
       <svg viewBox={`0 0 ${width} ${totalHeight}`} width={width} height={totalHeight} role="img" aria-label={title}>
@@ -92,7 +104,7 @@ export default function BarChart({ title, unit, bars, exportable = false }) {
 
           return (
             <g
-              key={bar.key ?? bar.label}
+              key={bar.key ?? `${bar.label}-${i}`}
               onMouseEnter={() => setHoverIndex(i)}
               onMouseLeave={() => setHoverIndex((h) => (h === i ? null : h))}
             >

@@ -12,6 +12,7 @@ import {
   extractDocId,
   getGoogleDocMetadata,
   appendLcaReportToDoc,
+  appendLcaModuleToDoc,
   overwriteLcaReportInDoc
 } from '../lib/googleDocsSync.js'
 import {
@@ -27,6 +28,7 @@ export default function GoogleDocsSyncPanel({ summaries = [], references = [] })
   const [activeTab, setActiveTab] = useState('docs') // 'docs' | 'slides'
   const [docInput, setDocInput] = useState(DEFAULT_DOC_URL)
   const [slidesInput, setSlidesInput] = useState(DEFAULT_SLIDES_URL)
+  const [selectedModule, setSelectedModule] = useState('ALL_THESIS')
   const [user, setUser] = useState(null)
   const [token, setToken] = useState(null)
   const [loading, setLoading] = useState(false)
@@ -93,17 +95,35 @@ export default function GoogleDocsSyncPanel({ summaries = [], references = [] })
     }
   }
 
+  // Helper to ensure an access token exists (auto-prompting sign-in if needed)
+  async function ensureToken() {
+    let accessToken = token || getCachedAccessToken()
+    if (!accessToken) {
+      setStatusMsg({ type: 'info', text: 'Initiating Google sign-in...' })
+      try {
+        const res = await googleSignIn()
+        if (res && res.accessToken) {
+          setUser(res.user)
+          setToken(res.accessToken)
+          accessToken = res.accessToken
+        }
+      } catch (err) {
+        console.warn('Auto sign-in bypassed or cancelled:', err)
+      }
+    }
+    return accessToken
+  }
+
   // --- Google Docs Actions ---
   async function handleVerifyDoc() {
-    const accessToken = token || getCachedAccessToken()
-    if (!accessToken) {
-      setStatusMsg({ type: 'error', text: 'Please sign in with Google first to verify document access.' })
-      return
-    }
-
     setLoading(true)
     setStatusMsg(null)
     try {
+      const accessToken = await ensureToken()
+      if (!accessToken) {
+        setStatusMsg({ type: 'error', text: 'Sign in to Google was cancelled or not completed.' })
+        return
+      }
       const meta = await getGoogleDocMetadata(cleanDocId, accessToken)
       setDocMetadata(meta)
       setStatusMsg({
@@ -121,64 +141,123 @@ export default function GoogleDocsSyncPanel({ summaries = [], references = [] })
     }
   }
 
-  async function handleAppendReport() {
-    const accessToken = token || getCachedAccessToken()
-    if (!accessToken) {
-      setStatusMsg({ type: 'error', text: 'Please sign in with Google first.' })
-      return
-    }
-
+  async function handleAppendSelectedModule() {
     const docName = docMetadata?.title || cleanDocId
-    const confirmed = window.confirm(
-      `Append latest LCA report data directly to Google Doc "${docName}"?\n\nThis adds formatted executive summary, methodology, material research, assembly details, and whole-building LCA totals.`
-    )
-    if (!confirmed) return
 
     setLoading(true)
-    setStatusMsg(null)
+    setStatusMsg({ type: 'info', text: 'Processing selected module for Google Doc...' })
     try {
-      const res = await appendLcaReportToDoc(cleanDocId, summaries, references, accessToken)
+      const accessToken = await ensureToken()
+      if (!accessToken) {
+        setStatusMsg({ type: 'error', text: 'Sign in to Google was cancelled or not completed.' })
+        return
+      }
+      const res = await appendLcaModuleToDoc(cleanDocId, summaries, references, selectedModule, accessToken)
       setStatusMsg({
         type: 'success',
-        text: `LCA Report appended successfully to Google Doc "${res.docTitle || docName}" at ${new Date().toLocaleTimeString()}!`
+        text: `Selected module appended successfully to Google Doc "${res.docTitle || docName}" at ${new Date().toLocaleTimeString()}!`
       })
     } catch (err) {
-      console.error('Append Report Error:', err)
+      console.error('Append Module Error:', err)
       setStatusMsg({
         type: 'error',
-        text: `Failed to append report: ${err.message}`
+        text: `Failed to append module: ${err.message}`
       })
     } finally {
       setLoading(false)
     }
   }
 
-  async function handleOverwriteReport() {
-    const accessToken = token || getCachedAccessToken()
-    if (!accessToken) {
-      setStatusMsg({ type: 'error', text: 'Please sign in with Google first.' })
-      return
-    }
-
+  async function handleSyncFullThesis() {
     const docName = docMetadata?.title || cleanDocId
-    const confirmed = window.confirm(
-      `⚠️ OVERWRITE WARNING:\n\nAre you sure you want to REPLACE all existing content in Google Doc "${docName}" with the latest LCA Report?`
-    )
-    if (!confirmed) return
 
     setLoading(true)
-    setStatusMsg(null)
+    setStatusMsg({ type: 'info', text: 'Syncing full thesis with Google Docs named heading styles & dynamic outline...' })
     try {
+      const accessToken = await ensureToken()
+      if (!accessToken) {
+        setStatusMsg({ type: 'error', text: 'Sign in to Google was cancelled or not completed.' })
+        return
+      }
       const res = await overwriteLcaReportInDoc(cleanDocId, summaries, references, accessToken)
       setStatusMsg({
         type: 'success',
-        text: `Google Doc "${res.docTitle || docName}" cleared and updated with latest LCA Report at ${new Date().toLocaleTimeString()}!`
+        text: `Full Thesis LCA Report synced with automatic heading structure into Google Doc "${res.docTitle || docName}" at ${new Date().toLocaleTimeString()}!`
       })
     } catch (err) {
-      console.error('Overwrite Report Error:', err)
+      console.error('Sync Thesis Error:', err)
       setStatusMsg({
         type: 'error',
-        text: `Failed to overwrite document: ${err.message}`
+        text: `Failed to sync full thesis: ${err.message}`
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function handlePullCleanVersion() {
+    const docName = docMetadata?.title || cleanDocId
+
+    setLoading(true)
+    setStatusMsg({ type: 'info', text: 'Deleting wrong version and pulling latest clean LCA report into Google Doc...' })
+    try {
+      const accessToken = await ensureToken()
+      if (!accessToken) {
+        setStatusMsg({ type: 'error', text: 'Sign in to Google was cancelled or not completed.' })
+        return
+      }
+      const res = await overwriteLcaReportInDoc(cleanDocId, summaries, references, accessToken)
+      setStatusMsg({
+        type: 'success',
+        text: `Successfully deleted wrong version! Pulled and restored latest clean LCA Report state into Google Doc "${res.docTitle || docName}" at ${new Date().toLocaleTimeString()}.`
+      })
+    } catch (err) {
+      console.error('Pull Clean Version Error:', err)
+      setStatusMsg({
+        type: 'error',
+        text: `Failed to pull/reset document: ${err.message}`
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function handleCopyModuleToClipboard() {
+    try {
+      const { generateLcaModuleText } = await import('../lib/googleDocsSync.js')
+      const text = generateLcaModuleText(selectedModule, summaries, references)
+      await navigator.clipboard.writeText(text)
+      setStatusMsg({
+        type: 'success',
+        text: `📋 Copied selected module text to clipboard! You can paste it directly into Google Docs or Word.`
+      })
+    } catch (e) {
+      setStatusMsg({ type: 'error', text: `Clipboard copy failed: ${e.message}` })
+    }
+  }
+
+  async function handlePullCleanSlides() {
+    const presName = slidesMetadata?.title || cleanSlidesId
+
+    setLoading(true)
+    setStatusMsg({ type: 'info', text: 'Deleting wrong presentation state and pulling latest clean LCA assembly metrics into Google Slides...' })
+    try {
+      const accessToken = await ensureToken()
+      if (!accessToken) {
+        setStatusMsg({ type: 'error', text: 'Sign in to Google was cancelled or not completed.' })
+        return
+      }
+      const res = await syncLcaResultsToGoogleSlides(cleanSlidesId, summaries, accessToken)
+      const count = res.updatedSlides?.length || 0
+      setStatusMsg({
+        type: 'success',
+        text: `Successfully deleted wrong version! Pulled and restored clean LCA assembly metrics across ${count} slides in "${res.presentationTitle || presName}" at ${new Date().toLocaleTimeString()}.`
+      })
+    } catch (err) {
+      console.error('Pull Clean Slides Error:', err)
+      setStatusMsg({
+        type: 'error',
+        text: `Failed to pull/reset presentation: ${err.message}`
       })
     } finally {
       setLoading(false)
@@ -187,15 +266,14 @@ export default function GoogleDocsSyncPanel({ summaries = [], references = [] })
 
   // --- Google Slides Actions ---
   async function handleVerifySlides() {
-    const accessToken = token || getCachedAccessToken()
-    if (!accessToken) {
-      setStatusMsg({ type: 'error', text: 'Please sign in with Google first to verify presentation access.' })
-      return
-    }
-
     setLoading(true)
     setStatusMsg(null)
     try {
+      const accessToken = await ensureToken()
+      if (!accessToken) {
+        setStatusMsg({ type: 'error', text: 'Sign in to Google was cancelled or not completed.' })
+        return
+      }
       const meta = await getGooglePresentationMetadata(cleanSlidesId, accessToken)
       setSlidesMetadata(meta)
       const slidesCount = meta.slides ? meta.slides.length : 0
@@ -215,21 +293,16 @@ export default function GoogleDocsSyncPanel({ summaries = [], references = [] })
   }
 
   async function handleSyncSlides() {
-    const accessToken = token || getCachedAccessToken()
-    if (!accessToken) {
-      setStatusMsg({ type: 'error', text: 'Please sign in with Google first.' })
-      return
-    }
-
     const presName = slidesMetadata?.title || cleanSlidesId
-    const confirmed = window.confirm(
-      `Auto-assign LCA results to matching Assembly slides in Google Presentation "${presName}"?\n\nThis will update body text on each slide (e.g. "Assembly 1 - LCA", "Assembly 2 - LCA", etc.) with current U-values, embodied carbon, logistics freight, and layer compositions.`
-    )
-    if (!confirmed) return
 
     setLoading(true)
-    setStatusMsg(null)
+    setStatusMsg({ type: 'info', text: 'Syncing LCA results to Google Slides...' })
     try {
+      const accessToken = await ensureToken()
+      if (!accessToken) {
+        setStatusMsg({ type: 'error', text: 'Sign in to Google was cancelled or not completed.' })
+        return
+      }
       const res = await syncLcaResultsToGoogleSlides(cleanSlidesId, summaries, accessToken)
       const count = res.updatedSlides?.length || 0
       setStatusMsg({
@@ -277,11 +350,11 @@ export default function GoogleDocsSyncPanel({ summaries = [], references = [] })
         <div className="gdoc-sync-title-group">
           <div>
             <h3 className="gdoc-sync-title">
-              {activeTab === 'docs' ? 'Google Docs Report Synchronization' : 'Google Slides Assembly Sync'}
+              {activeTab === 'docs' ? 'Google Docs Report & Modular Sync' : 'Google Slides Assembly Sync'}
             </h3>
             <p className="gdoc-sync-subtitle">
               {activeTab === 'docs'
-                ? 'Automatically sync and append MID 2030 LCA Report data directly to your target Google Document'
+                ? 'Modularly sync specific paragraphs, graphic section diagrams, or full thesis reports with auto-generated Google Docs headings and document outline'
                 : 'Auto-assign assembly LCA metrics (U-value, GWP, freight, layers) directly to matching presentation slides'}
             </p>
           </div>
@@ -309,6 +382,39 @@ export default function GoogleDocsSyncPanel({ summaries = [], references = [] })
             >
               Open Doc ↗
             </a>
+          </div>
+
+          {/* Modular Section / Graphic Selector */}
+          <div style={{ marginTop: '14px', background: '#f8fafc', padding: '12px 14px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+            <label className="gdoc-input-label" style={{ color: '#1e293b', fontWeight: 700 }}>
+              🎯 Select Specific Paragraph, Graphic, or Section to Sync:
+            </label>
+            <select
+              className="gdoc-input"
+              value={selectedModule}
+              onChange={(e) => setSelectedModule(e.target.value)}
+              style={{ marginTop: '6px', background: '#ffffff', cursor: 'pointer', fontWeight: 600 }}
+            >
+              <option value="ALL_THESIS">📜 Full Thesis LCA Report (All Chapters & Annexes)</option>
+              <option value="PROPOSAL_COMPARISON">📋 Proposal MID 2030 Requirement Comparison & Matrix</option>
+              <option value="ABSTRACT">📌 Chapter 1: Abstract & Executive Summary</option>
+              <option value="METHODOLOGY">🔬 Chapter 2: Methodological Framework & DIN EN Standards</option>
+              <option value="DELPHIN_MOISTURE">💧 Chapter 2.1: Delphin 1D Hygrothermal & Moisture Analysis</option>
+              <option value="LADYBUG_ENERGY">☀️ Chapter 2.2: Ladybug 50-Year Dynamic Energy & Comfort Simulation</option>
+              <option value="MATERIALS_DISCIPLINE">🧪 Chapter 3: Material Research & Discipline Analysis</option>
+              <option value="ASSEMBLY_WALL">🧱 Assembly: Exterior Wall (Section Diagram & LCA Breakdown)</option>
+              <option value="ASSEMBLY_FLOOR">🪵 Assembly: Ground Floor (Section Diagram & LCA Breakdown)</option>
+              <option value="ASSEMBLY_ROOF">🏠 Assembly: Roof (Section Diagram & LCA Breakdown)</option>
+              <option value="ASSEMBLY_WINDOW">🪟 Assembly: Window (Section Diagram & LCA Breakdown)</option>
+              <option value="ASSEMBLY_DOOR">🚪 Assembly: Door (Section Diagram & LCA Breakdown)</option>
+              <option value="ASSEMBLY_SKYLIGHT">☀️ Assembly: Skylight (Section Diagram & LCA Breakdown)</option>
+              <option value="GLOBAL_GRAPHICS">📊 Chapter 5: Whole-Building Totals & Lifecycle Stage Graphics</option>
+              <option value="ANNEX_A_FICHES">📑 Annex A: Material Fiche Technical Sheets</option>
+              <option value="ANNEX_B_MATRIX">⚖️ Annex B: Level of Assumption & Confidence Matrix</option>
+            </select>
+            <p style={{ margin: '6px 0 0', fontSize: '0.76rem', color: '#64748b' }}>
+              💡 Modular sync appends only your chosen element (e.g. wall graphic diagram) right where you want it without touching or overwriting the rest of your document.
+            </p>
           </div>
         </div>
       ) : (
@@ -407,23 +513,42 @@ export default function GoogleDocsSyncPanel({ summaries = [], references = [] })
             <button
               className="gdoc-btn gdoc-btn--outline"
               onClick={handleVerifyDoc}
-              disabled={loading || !user}
+              disabled={loading}
             >
-              🔍 Verify Document Access
+              🔍 Verify Access
             </button>
             <button
               className="gdoc-btn gdoc-btn--primary"
-              onClick={handleAppendReport}
-              disabled={loading || !user}
+              onClick={handleAppendSelectedModule}
+              disabled={loading}
+              title="Appends ONLY your selected module/graphic without modifying existing document text"
             >
-              ➕ Append LCA Report to Google Doc
+              ➕ Append Selected Module to Doc
             </button>
             <button
               className="gdoc-btn gdoc-btn--secondary"
-              onClick={handleOverwriteReport}
-              disabled={loading || !user}
+              onClick={handleSyncFullThesis}
+              disabled={loading}
+              title="Overwrites Google Doc cleanly with full thesis report using Google Docs official Heading styles"
             >
-              🔄 Overwrite Google Doc with Latest LCA
+              🔄 Sync Full Thesis (With Headings & Outline)
+            </button>
+            <button
+              className="gdoc-btn gdoc-btn--outline"
+              onClick={handleCopyModuleToClipboard}
+              disabled={loading}
+              title="Copy formatted module text directly to clipboard without needing Google sign-in"
+            >
+              📋 Copy Module Text
+            </button>
+            <button
+              className="gdoc-btn gdoc-btn--outline"
+              onClick={handlePullCleanVersion}
+              disabled={loading}
+              style={{ color: '#dc2626', borderColor: '#fca5a5' }}
+              title="Delete wrong version and pull/restore latest clean report state"
+            >
+              📥 Pull Clean State
             </button>
           </>
         ) : (
@@ -431,16 +556,24 @@ export default function GoogleDocsSyncPanel({ summaries = [], references = [] })
             <button
               className="gdoc-btn gdoc-btn--outline"
               onClick={handleVerifySlides}
-              disabled={loading || !user}
+              disabled={loading}
             >
               🔍 Verify Slides Access
             </button>
             <button
               className="gdoc-btn gdoc-btn--primary"
               onClick={handleSyncSlides}
-              disabled={loading || !user}
+              disabled={loading}
             >
               📊 Auto-Assign LCA Results to Assembly Slides
+            </button>
+            <button
+              className="gdoc-btn gdoc-btn--secondary"
+              onClick={handlePullCleanSlides}
+              disabled={loading}
+              title="Delete wrong version and pull/restore latest clean slides state"
+            >
+              📥 Pull Clean Deck (Delete Wrong Version)
             </button>
           </>
         )}
@@ -455,3 +588,4 @@ export default function GoogleDocsSyncPanel({ summaries = [], references = [] })
     </div>
   )
 }
+

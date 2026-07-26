@@ -3,6 +3,7 @@ import L from 'leaflet'
 import html2canvas from 'html2canvas'
 import { jsPDF } from 'jspdf'
 import leafletImage from 'leaflet-image'
+import { downloadElementAsPng, copyElementPngToClipboard } from '../lib/pngExport.js'
 import FicheTechnique from './FicheTechnique.jsx'
 import FieldSuggest from './FieldSuggest.jsx'
 import EndOfLifeSuggest, { END_OF_LIFE_SCENARIOS } from './EndOfLifeSuggest.jsx'
@@ -404,6 +405,66 @@ export default function FicheTechniquePanel({ material, closestToSite }) {
     reader.readAsDataURL(file)
   }
 
+  async function handleExportPng() {
+    if (!sheetRef.current) return
+    setExporting(true)
+    try {
+      if (mapInstanceRef.current) {
+        const { site, detmoldFactory } = referenceLocations
+        const providerPoint = closestToSite?.lat != null
+          ? { lat: closestToSite.lat, lng: closestToSite.lng }
+          : detail.providerLat != null && detail.providerLng != null
+            ? { lat: detail.providerLat, lng: detail.providerLng }
+            : null
+        const points = [
+          { latlng: [site.lat, site.lng], color: MARKER_COLORS.haarlem },
+          { latlng: [detmoldFactory.lat, detmoldFactory.lng], color: MARKER_COLORS.detmold },
+          ...(providerPoint
+            ? [{ latlng: [providerPoint.lat, providerPoint.lng], color: providerMarkerColor(!!closestToSite) }]
+            : []),
+        ]
+        const mapCanvas = await rasterizeMap(mapInstanceRef.current, points)
+        setMapSnapshotUrl(mapCanvas.toDataURL('image/png'))
+        await new Promise((r) => setTimeout(r, 50))
+      }
+      await downloadElementAsPng(sheetRef.current, `fiche-technique-${material.id}.png`, { scale: 3 })
+    } finally {
+      setMapSnapshotUrl(null)
+      setExporting(false)
+    }
+  }
+
+  async function handleCopyPng() {
+    if (!sheetRef.current) return
+    setExporting(true)
+    try {
+      if (mapInstanceRef.current) {
+        const { site, detmoldFactory } = referenceLocations
+        const providerPoint = closestToSite?.lat != null
+          ? { lat: closestToSite.lat, lng: closestToSite.lng }
+          : detail.providerLat != null && detail.providerLng != null
+            ? { lat: detail.providerLat, lng: detail.providerLng }
+            : null
+        const points = [
+          { latlng: [site.lat, site.lng], color: MARKER_COLORS.haarlem },
+          { latlng: [detmoldFactory.lat, detmoldFactory.lng], color: MARKER_COLORS.detmold },
+          ...(providerPoint
+            ? [{ latlng: [providerPoint.lat, providerPoint.lng], color: providerMarkerColor(!!closestToSite) }]
+            : []),
+        ]
+        const mapCanvas = await rasterizeMap(mapInstanceRef.current, points)
+        setMapSnapshotUrl(mapCanvas.toDataURL('image/png'))
+        await new Promise((r) => setTimeout(r, 50))
+      }
+      await copyElementPngToClipboard(sheetRef.current, { scale: 3 })
+    } catch (err) {
+      console.warn('Clipboard copy failed:', err)
+    } finally {
+      setMapSnapshotUrl(null)
+      setExporting(false)
+    }
+  }
+
   async function handleExportFiche() {
     if (!sheetRef.current) return
     setExporting(true)
@@ -684,9 +745,17 @@ export default function FicheTechniquePanel({ material, closestToSite }) {
         onMapReady={(map) => { mapInstanceRef.current = map }}
       />
 
-      <button type="button" className="export-scale-button" onClick={handleExportFiche} disabled={exporting}>
-        {exporting ? 'Generating fiche PDF…' : 'Export fiche technique PDF'}
-      </button>
+      <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginTop: '12px' }}>
+        <button type="button" className="export-scale-button" onClick={handleExportPng} disabled={exporting}>
+          {exporting ? 'Processing PNG…' : '📸 Save Fiche PNG'}
+        </button>
+        <button type="button" className="export-scale-button" onClick={handleCopyPng} disabled={exporting}>
+          {exporting ? 'Processing PNG…' : '📋 Copy Fiche PNG'}
+        </button>
+        <button type="button" className="export-scale-button" onClick={handleExportFiche} disabled={exporting} style={{ background: '#475569' }}>
+          {exporting ? 'Generating fiche PDF…' : 'Export fiche technique PDF'}
+        </button>
+      </div>
     </div>
   )
 }

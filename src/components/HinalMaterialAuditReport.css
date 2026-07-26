@@ -82,6 +82,11 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
+.hinal-audit-doc p {
+  text-align: justify;
+  text-justify: inter-word;
+}
+
 .hinal-doc-header {
   display: flex;
   justify-content: space-between;

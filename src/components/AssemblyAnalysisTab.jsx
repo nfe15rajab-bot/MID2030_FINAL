@@ -43,23 +43,26 @@ export default function AssemblyAnalysisTab() {
   // a 50mm layer of the same m3-declared material used to chart as
   // identical bars). Same formula as LayerBuilder's own corrected table
   // (gwpPerM2.js), so the two can never disagree again.
-  const { breakdown: gwpPerM2 } = gwpPerM2ForLayers(liveLayers, categoryMaterials)
-  const gwpBars = liveLayers.map((l, i) => {
-    const perM2 = gwpPerM2.find((g) => g.instanceId === l.instanceId)?.perM2 ?? null
+  const safeLiveLayers = Array.isArray(liveLayers) ? liveLayers : []
+  const { breakdown: gwpPerM2 } = gwpPerM2ForLayers(safeLiveLayers, categoryMaterials)
+  const gwpBars = safeLiveLayers.map((l, i) => {
+    if (!l) return { label: 'Unnamed layer', value: null, formattedValue: null, key: i }
+    const perM2 = (gwpPerM2 || []).find((g) => g?.instanceId === l.instanceId)?.perM2 ?? null
     const nameStr = l.name || ''
     return {
       label: nameStr.length > 14 ? `${nameStr.slice(0, 13)}…` : nameStr,
       value: perM2,
       formattedValue: perM2 != null ? perM2.toFixed(2) : null,
-      tooltipNote: `${l.name} — GWP A1-A3 per 1m² (thickness-scaled)`, // full name, since the bar label itself may be truncated
+      tooltipNote: `${l.name || 'Unnamed'} — GWP A1-A3 per 1m² (thickness-scaled)`, // full name, since the bar label itself may be truncated
       key: l.instanceId ?? i,
     }
   })
   // Same underlying gwpPerM2 numbers as gwpBars above — just full,
   // untruncated names, since the pie's legend has room the bar chart's
   // rotated labels don't.
-  const gwpShareSlices = liveLayers.map((l, i) => {
-    const perM2 = gwpPerM2.find((g) => g.instanceId === l.instanceId)?.perM2 ?? null
+  const gwpShareSlices = safeLiveLayers.map((l, i) => {
+    if (!l) return { label: 'Unnamed layer', value: null, formattedValue: null, key: i }
+    const perM2 = (gwpPerM2 || []).find((g) => g?.instanceId === l.instanceId)?.perM2 ?? null
     return {
       label: l.name || 'Unnamed layer',
       value: perM2,

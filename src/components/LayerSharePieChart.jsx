@@ -38,11 +38,12 @@ function donutSlicePath(cx, cy, rOuter, rInner, startDeg, endDeg) {
 // the chart says so explicitly — the ring answers "how much of the
 // total swing does this layer account for", the numbers answer "which
 // direction".
-export default function LayerSharePieChart({ title, unit, slices, exportable = false }) {
+export default function LayerSharePieChart({ title, unit, slices = [], exportable = false }) {
   const [hoverKey, setHoverKey] = useState(null)
 
-  const known = slices.filter((s) => s.value != null && s.value !== 0)
-  const unknownCount = slices.length - known.length
+  const safeSlices = Array.isArray(slices) ? slices : []
+  const known = safeSlices.filter((s) => s && s.value != null && s.value !== 0)
+  const unknownCount = safeSlices.length - known.length
 
   if (known.length === 0) {
     return (
@@ -55,9 +56,9 @@ export default function LayerSharePieChart({ title, unit, slices, exportable = f
     )
   }
 
-  const sorted = [...known].sort((a, b) => Math.abs(b.value) - Math.abs(a.value))
-  const head = sorted.slice(0, MAX_SLICES)
-  const tail = sorted.slice(MAX_SLICES)
+  const sorted = [...known].sort((a, b) => Math.abs(b?.value || 0) - Math.abs(a?.value || 0))
+  const head = sorted?.slice(0, MAX_SLICES) || []
+  const tail = sorted?.slice(MAX_SLICES) || []
 
   const entries = head.map((s, i) => ({ ...s, color: SLOT_COLORS[i], magnitude: Math.abs(s.value) }))
   if (tail.length > 0) {

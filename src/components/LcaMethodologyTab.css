@@ -1,103 +1,228 @@
-.lca-methodology-tab { display: flex; flex-direction: column; gap: 20px; }
+.lca-methodology-tab { display: flex; flex-direction: column; gap: 24px; padding: 4px 0 24px 0; }
 /* Own accent (slate blue) — distinct from LCA and EPD's plum and Assembly
    Analysis Preview's teal, so the tab bar's colored-heading convention
    still tells tabs apart at a glance. */
 .lca-methodology-heading {
   margin: 0;
-  padding-left: 10px;
-  border-left: 4px solid #3d5a80;
-  font-size: 1.05rem;
-  color: #3d5a80;
+  padding-left: 12px;
+  border-left: 4px solid #2563eb;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #1e3a8a;
+  letter-spacing: -0.01em;
 }
-.lca-methodology-intro { color: #666; font-size: 0.88rem; margin: 0; max-width: 900px; }
+.lca-methodology-tab p {
+  text-align: justify;
+  text-justify: inter-word;
+}
 
-.lca-methodology-filter { display: flex; gap: 8px; }
+.lca-methodology-intro {
+  color: #475569;
+  font-size: 0.92rem;
+  line-height: 1.5;
+  margin: 0;
+  max-width: 950px;
+}
+
+.lca-methodology-filter { display: flex; gap: 10px; }
 .lca-methodology-filter button {
-  padding: 6px 14px;
-  border: 1px solid var(--border);
-  border-radius: 16px;
+  padding: 8px 18px;
+  border: 1px solid #cbd5e1;
+  border-radius: 20px;
   background: white;
   font-family: inherit;
-  font-size: 0.82rem;
+  font-size: 0.85rem;
+  font-weight: 600;
   cursor: pointer;
-  color: #555;
+  color: #475569;
+  transition: all 0.15s ease;
+}
+.lca-methodology-filter button:hover {
+  background: #f1f5f9;
+  color: #0f172a;
 }
 .lca-methodology-filter button.active {
-  background: #3d5a80;
-  border-color: #3d5a80;
+  background: #1e3a8a;
+  border-color: #1e3a8a;
   color: white;
+  box-shadow: 0 2px 6px rgba(30, 58, 138, 0.2);
 }
 
-.lca-methodology-group h3 { margin: 0 0 10px; font-size: 0.98rem; }
+.lca-methodology-group h3 {
+  margin: 0 0 12px;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #0f172a;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
 
 .lca-methodology-modules {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  gap: 16px;
 }
 
 .methodology-module {
   background: white;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 14px 16px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 16px 18px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
-.methodology-module--out-of-scope { background: #f5f4f0; opacity: 0.85; }
+.methodology-module:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.07);
+}
+.methodology-module--out-of-scope {
+  background: #f8fafc;
+  opacity: 0.88;
+  border-style: dashed;
+}
 
 .methodology-module-header {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   flex-wrap: wrap;
 }
-.methodology-module-header h4 { margin: 0; font-size: 0.92rem; flex: 1; min-width: 120px; }
-.methodology-module-code {
+.methodology-module-header h4 {
+  margin: 0;
+  font-size: 0.96rem;
   font-weight: 700;
-  font-size: 0.8rem;
-  color: #3d5a80;
-  background: #eaeef3;
-  padding: 1px 8px;
-  border-radius: 10px;
+  color: #0f172a;
+  flex: 1;
+  min-width: 130px;
+}
+.methodology-module-code {
+  font-weight: 800;
+  font-size: 0.82rem;
+  color: #1e3a8a;
+  background: #dbeafe;
+  padding: 3px 10px;
+  border-radius: 12px;
+  border: 1px solid #bfdbfe;
 }
 .methodology-scope-badge {
-  font-size: 0.7rem;
-  font-weight: 600;
-  padding: 1px 8px;
-  border-radius: 10px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 12px;
   white-space: nowrap;
+  letter-spacing: 0.02em;
 }
-.methodology-scope-badge--in { background: var(--status-complete-bg); color: var(--status-complete); }
-.methodology-scope-badge--out { background: #eee; color: #888; }
+.methodology-scope-badge--in {
+  background: #dcfce7;
+  color: #15803d;
+  border: 1px solid #bbf7d0;
+}
+.methodology-scope-badge--out {
+  background: #f1f5f9;
+  color: #64748b;
+  border: 1px solid #e2e8f0;
+}
 
-.methodology-module-standard { color: #888; font-size: 0.76rem; font-style: italic; margin: 0; }
-.methodology-module-desc { color: #333; font-size: 0.85rem; margin: 0; }
-.methodology-module-note { color: #666; font-size: 0.78rem; margin: 0; }
-.methodology-module-source { color: #999; font-size: 0.74rem; margin: 0; }
-.methodology-module-scopenote { color: var(--status-attention); font-size: 0.78rem; margin: 0; font-style: italic; }
+.methodology-module-standard {
+  color: #0d9488;
+  font-size: 0.78rem;
+  font-weight: 600;
+  margin: 0;
+  display: inline-block;
+  background: #ccfbf1;
+  padding: 2px 8px;
+  border-radius: 6px;
+  align-self: flex-start;
+}
+.methodology-module-desc {
+  color: #334155;
+  font-size: 0.88rem;
+  line-height: 1.45;
+  margin: 0;
+}
+.methodology-module-note {
+  color: #475569;
+  font-size: 0.8rem;
+  margin: 0;
+  line-height: 1.4;
+}
+.methodology-module-source {
+  color: #64748b;
+  font-size: 0.76rem;
+  font-weight: 500;
+  margin: 0;
+}
+.methodology-module-scopenote {
+  color: #b45309;
+  font-size: 0.8rem;
+  margin: 0;
+  font-style: italic;
+  background: #fef3c7;
+  padding: 4px 8px;
+  border-radius: 6px;
+}
 
 .methodology-formula {
-  background: #f7f6f2;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 8px 10px;
-  font-size: 0.78rem;
-  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  background: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  font-family: 'JetBrains Mono', 'Fira Code', 'SFMono-Regular', Consolas, monospace;
   white-space: pre-wrap;
-  margin: 0;
-  color: #222;
+  margin: 4px 0;
+  color: #38bdf8; /* Vivid cyan code font */
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
-.lca-methodology-table-wrapper { overflow-x: auto; margin: 4px 0; }
-.lca-methodology-table { border-collapse: collapse; font-size: 0.82rem; }
+.lca-methodology-table-wrapper { overflow-x: auto; margin: 6px 0; }
+.lca-methodology-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.84rem;
+  border-radius: 6px;
+  overflow: hidden;
+}
 .lca-methodology-table th, .lca-methodology-table td {
-  border: 1px solid var(--border);
-  padding: 5px 10px;
+  border: 1px solid #e2e8f0;
+  padding: 8px 12px;
   text-align: left;
 }
-.lca-methodology-table thead th { background: #f0efe9; font-weight: 600; }
+.lca-methodology-table thead th {
+  background: #f1f5f9;
+  color: #1e293b;
+  font-weight: 700;
+}
+
+.lca-methodology-glossary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 14px;
+}
+.lca-methodology-glossary-entry {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 14px 16px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+}
+.lca-methodology-glossary-entry dt {
+  font-weight: 700;
+  font-size: 0.92rem;
+  color: #1e3a8a;
+  margin-bottom: 6px;
+}
+.lca-methodology-glossary-entry dd {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #334155;
+  line-height: 1.45;
+}
+
 .lca-methodology-table td:first-child { text-transform: capitalize; }
 
 .lca-methodology-glossary {

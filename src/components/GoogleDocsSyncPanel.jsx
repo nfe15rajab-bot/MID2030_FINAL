@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import {
   initGoogleAuth,
   googleSignIn,
@@ -22,7 +22,21 @@ import {
   getGooglePresentationMetadata,
   syncLcaResultsToGoogleSlides
 } from '../lib/googleSlidesSync.js'
+import { appendChartImageToDoc } from '../lib/driveImageUpload.js'
+import { captureElementToPngDataUrl } from '../lib/pngExport.js'
+import BarChart from './BarChart.jsx'
+import LayerSharePieChart from './LayerSharePieChart.jsx'
 import './GoogleDocsSyncPanel.css'
+
+// Modules that have a real chart/diagram to go with their text -- keyed
+// so handleAppendSelectedModule knows which off-screen chart ref(s) to
+// capture after the text append succeeds. Every other module stays
+// text-only, same as before this feature existed.
+const MODULES_WITH_GRAPHICS = new Set([
+  'GLOBAL_GRAPHICS',
+  'ASSEMBLY_WALL', 'ASSEMBLY_FLOOR', 'ASSEMBLY_ROOF',
+  'ASSEMBLY_WINDOW', 'ASSEMBLY_DOOR', 'ASSEMBLY_SKYLIGHT',
+])
 
 export default function GoogleDocsSyncPanel({ summaries = [], references = [] }) {
   const [activeTab, setActiveTab] = useState('docs') // 'docs' | 'slides'
@@ -35,6 +49,59 @@ export default function GoogleDocsSyncPanel({ summaries = [], references = [] })
   const [statusMsg, setStatusMsg] = useState(null) // { type: 'success' | 'error' | 'info', text: string }
   const [docMetadata, setDocMetadata] = useState(null)
   const [slidesMetadata, setSlidesMetadata] = useState(null)
+  const [imageUploadStatus, setImageUploadStatus] = useState(null) // string | null, shown while uploading chart(s)
+
+  // Off-screen copies of the same chart components used elsewhere in the
+  // app (BarChart.jsx / LayerSharePieChart.jsx) -- rendered purely so
+  // there's a live DOM node to hand to html2canvas (via
+  // captureElementToPngDataUrl) right before an image-bearing module is
+  // synced. Same "position:fixed, opacity:0.001" off-screen convention as
+  // DeliverablesTab.jsx's A4ReportSection/A3PosterSection export copies.
+  const uValueChartRef = useRef(null)
+  const gwpChartRef = useRef(null)
+  const assemblyPieRef = useRef(null)
+
+  const withData = summaries.filter((s) => s.hasData)
+  const uValueBars = withData.map((s) => ({ label: s.label, value: s.uValue, formattedValue: s.uValue != null ? s.uValue.toFixed(3) : null }))
+  const gwpBars = withData.map((s) => ({ label: s.label, value: s.a1a3KnownCount > 0 ? s.a1a3Total : null, formattedValue: s.a1a3Total != null ? s.a1a3Total.toFixed(1) : null }))
+
+  const selectedAssemblyKey = selectedModule.startsWith('ASSEMBLY_') ? selectedModule.replace('ASSEMBLY_', '').toLowerCase() : null
+  const selectedAssemblySummary = selectedAssemblyKey ? summaries.find((s) => s.key === selectedAssemblyKey) : null
+  const assemblyPieSlices = (selectedAssemblySummary?.layerResults || []).map((l, i) => ({
+    label: l.name || 'Unnamed layer',
+    value: l.a1a3,
+    formattedValue: l.a1a3 != null ? l.a1a3.toFixed(2) : null,
+    key: l.instanceId ?? i,
+  }))
+
+  // Captures whichever chart(s) belong to the module just synced and
+  // appends them to the doc, one at a time -- upload failures here are
+  // reported but never roll back the text that already synced
+  // successfully, since the text is the more important half.
+  async function appendModuleGraphics(docId, moduleKey, accessToken) {
+    if (!MODULES_WITH_GRAPHICS.has(moduleKey)) return { attempted: 0, failed: 0 }
+    const targets = moduleKey === 'GLOBAL_GRAPHICS'
+      ? [
+          { ref: uValueChartRef, filename: 'uvalue-by-assembly.png', aspectRatio: 0.5 },
+          { ref: gwpChartRef, filename: 'gwp-by-assembly.png', aspectRatio: 0.5 },
+        ]
+      : [{ ref: assemblyPieRef, filename: `${moduleKey.toLowerCase()}-layer-share.png`, aspectRatio: 0.7 }]
+
+    let failed = 0
+    for (const { ref, filename, aspectRatio } of targets) {
+      if (!ref.current) continue
+      try {
+        setImageUploadStatus(`Uploading ${filename} to Drive and inserting into the doc...`)
+        const dataUrl = await captureElementToPngDataUrl(ref.current, { scale: 2 })
+        await appendChartImageToDoc(docId, dataUrl, filename, accessToken, { widthPt: 380, aspectRatio })
+      } catch (err) {
+        console.error(`Chart image upload failed (${filename}):`, err)
+        failed += 1
+      }
+    }
+    setImageUploadStatus(null)
+    return { attempted: targets.length, failed }
+  }
 
   useEffect(() => {
     const unsubscribe = initGoogleAuth(
@@ -153,9 +220,17 @@ export default function GoogleDocsSyncPanel({ summaries = [], references = [] })
         return
       }
       const res = await appendLcaModuleToDoc(cleanDocId, summaries, references, selectedModule, accessToken)
+
+      const graphics = await appendModuleGraphics(cleanDocId, selectedModule, accessToken)
+      const graphicsNote = graphics.attempted === 0
+        ? ''
+        : graphics.failed === 0
+          ? ` (+${graphics.attempted} chart image${graphics.attempted === 1 ? '' : 's'})`
+          : ` (${graphics.attempted - graphics.failed}/${graphics.attempted} chart images — ${graphics.failed} failed to upload, text synced fine)`
+
       setStatusMsg({
-        type: 'success',
-        text: `Selected module appended successfully to Google Doc "${res.docTitle || docName}" at ${new Date().toLocaleTimeString()}!`
+        type: graphics.failed > 0 ? 'info' : 'success',
+        text: `Selected module appended successfully to Google Doc "${res.docTitle || docName}"${graphicsNote} at ${new Date().toLocaleTimeString()}!`
       })
     } catch (err) {
       console.error('Append Module Error:', err)
@@ -585,6 +660,33 @@ export default function GoogleDocsSyncPanel({ summaries = [], references = [] })
           {statusMsg.text}
         </div>
       )}
+      {imageUploadStatus && (
+        <div className="gdoc-status-msg gdoc-status-msg--info">{imageUploadStatus}</div>
+      )}
+
+      {/* Off-screen chart copies, captured to PNG and uploaded to Drive
+          when an image-bearing module (GLOBAL_GRAPHICS / ASSEMBLY_*) is
+          synced — see appendModuleGraphics above. Never shown to the
+          user; exists purely so html2canvas has a real, laid-out DOM
+          node to capture, same convention as DeliverablesTab.jsx's
+          export-only report/poster copies. */}
+      <div style={{ position: 'fixed', left: 0, top: 0, width: '600px', zIndex: -9999, opacity: 0.001, pointerEvents: 'none', background: '#ffffff' }}>
+        <div ref={uValueChartRef}>
+          <BarChart title="U-value by assembly" unit="W/m²K" bars={uValueBars} />
+        </div>
+        <div ref={gwpChartRef}>
+          <BarChart title="GWP A1-A3 by assembly" unit="kg CO₂e" bars={gwpBars} />
+        </div>
+        {selectedAssemblySummary && (
+          <div ref={assemblyPieRef}>
+            <LayerSharePieChart
+              title={`${selectedAssemblySummary.label} — share of GWP A1-A3 by layer`}
+              unit="kg CO₂e"
+              slices={assemblyPieSlices}
+            />
+          </div>
+        )}
+      </div>
     </div>
   )
 }

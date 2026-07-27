@@ -104,6 +104,17 @@
   font-size: 0.62rem;
   text-align: center;
   padding: 2px;
+  /* Flex items default to min-width/min-height:auto, which refuses to
+     shrink a bar below its own number label's natural size — a thin
+     layer (a 1.5mm membrane in a 500mm+ stack) was rendering at the
+     label's minimum content size instead of its true proportional
+     sliver, ballooning past its flex-basis and crushing/overlapping
+     neighboring bars' numbers. Zeroing both lets flex-basis (the real
+     proportional thickness) win, and overflow:hidden then correctly
+     clips a number that genuinely doesn't fit instead of forcing the
+     bar to grow for it. */
+  min-width: 0;
+  min-height: 0;
 }
 .section-sheet-bars--row .section-sheet-bar { border-right: 1px solid #222; }
 .section-sheet-bars--row .section-sheet-bar:last-child { border-right: none; }

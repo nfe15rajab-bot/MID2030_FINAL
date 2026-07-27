@@ -80,6 +80,7 @@
     "thermalConductivityWmK": 0.13,
     "gwpA1A3PerFunctionalUnit": -760.5,
     "functionalUnit": "m3",
+    "linearCoverage": 0.395,
     "okobaudatUUID": "426b030a-5e6d-4ed6-b117-e8b01bc3e890",
     "epdSource": "Ökobaudat \"KRONOPLY OSB / KRONOPOL OSB\" process dataset (brand-specific)",
     "eolC1": 0,
@@ -91,7 +92,7 @@
     "eolConfidenceLabel": "Brand-specific Ökobaudat dataset (KRONOPLY/KRONOPOL OSB)",
     "gwpConfidence": "high",
     "gwpConfidenceLabel": "Brand-specific Ökobaudat dataset, not a generic OSB category",
-    "notes": "Used 3x in the wall stack (facade-side sheathing, structural, interior side) plus in roof and floor — same product, different quantities per assembly. Also doubles as the airtight layer if all T&G joints are taped (per SWISS KRONO guidance in deck). Source drawing labels this \"OSB/4\" (EN 300 load-bearing/humid-condition grade); Kronoply's own literature documents primarily OSB/3 — kept as OSB/4 per the team's spec drawing pending SKU confirmation with the supplier. GWP/density are from Ökobaudat's brand-specific KRONOPLY OSB dataset (doesn't separately break out OSB/3 vs OSB/4 — negative A1-A3 reflects biogenic carbon storage exceeding process emissions, standard for OSB EPDs). id kept as \"osb4\" — was \"wall-kronoply-osb3-18\" before this correction; see providers.json which was updated to match.",
+    "notes": "Used 3x in the wall stack (facade-side sheathing, structural, interior side) plus in roof and floor — same product, different quantities per assembly. linearCoverage 0.395 is MEASURED from the team's structural 3D model (2026-07-27): total wall OSB board volume 0.82 m³ ÷ 0.018m board thickness = 45.6 m² of real board, vs the naive 3 full layers × 38.44 m² wall area × 18mm = 2.076 m³ that flat continuous layers would claim — 0.82/2.076 = 0.395. Corrects the earlier flat-thickness assumption (openings + partial board zones deducted); applies to the wall's three OSB layers only (roof/floor/window OSB are separate catalog ids, each pending its own model-volume takeoff). Also doubles as the airtight layer if all T&G joints are taped (per SWISS KRONO guidance in deck). Source drawing labels this \"OSB/4\" (EN 300 load-bearing/humid-condition grade); Kronoply's own literature documents primarily OSB/3 — kept as OSB/4 per the team's spec drawing pending SKU confirmation with the supplier. GWP/density are from Ökobaudat's brand-specific KRONOPLY OSB dataset (doesn't separately break out OSB/3 vs OSB/4 — negative A1-A3 reflects biogenic carbon storage exceeding process emissions, standard for OSB EPDs). id kept as \"osb4\" — was \"wall-kronoply-osb3-18\" before this correction; see providers.json which was updated to match.",
     "gwpSourceUrl": "https://www.oekobaudat.de/OEKOBAU.DAT/resource/processes/426b030a-5e6d-4ed6-b117-e8b01bc3e890?version=00.02.000",
     "endOfLifeScenario": "Energy recovery (incineration)",
     "eolAssumptionBasis": "EN 15804 thermal treatment with energy recovery (R1 > 0.60) in municipal waste incineration plant"

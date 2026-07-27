@@ -331,7 +331,11 @@ export function analyzeLcaAssembly(assemblyKey) {
       }
     }
 
-    // Part C — A4 (real DIN EN ISO 14083 formula, see transport.js)
+    // Part C — A4, DIN EN ISO 14083, CONSOLIDATED convention (t·km x
+    // fleet-average intensity — see transport.js's header comment for why
+    // this is the app's default over the class template's round-trip
+    // formula, which stays available there as estimateTransportCO2RoundTrip
+    // for audit/comparison, e.g. TransportMethodologyA3.jsx).
     const { massKg, missing: massMissing } = deriveMassKg(layer, material, geometry, isUnitAssembly)
     const { distanceKm, missing: distanceMissing, source: distanceSource } = deriveDistanceKm(layer, material)
     const transportInputsReady = massMissing == null && distanceMissing == null

@@ -14,15 +14,18 @@ function fmt(n, digits = 1) {
 // from whatever's actually saved in this app (sectionStorage, fiche
 // research, Operational Energy settings) rather than typed in here.
 //
-// Two A4 columns on purpose, same as the export: Q is the class
-// template's own round-trip dedicated-truck figure (the graded number),
-// P is the consolidated t·km sensitivity (= M × N × O) — see the "A4
-// methodology — round trip vs consolidated" A3 sheet in Deliverables.
+// A4 (columns O/P/Q) is the CONSOLIDATED convention (DIN EN ISO 14083 /
+// GLEC Framework) — the app's reported A4 since 2026-07-27. O is the
+// truck's fleet-average t·km intensity, P is the live formula (=M×N×O),
+// Q is the computed value (same "formula vs value" pairing as K/L for
+// A1-A3) — P and Q agree by construction. The class template's alternate
+// round-trip formula isn't computed here; see the "A4 methodology" A3
+// sheet in Deliverables for that formula and the full comparison.
 const TPL_COLS = [
   'Drawing', 'Group N° + type', 'Layer N°', 'wall components', 'material',
   'Thickness (mm)', 'Volume (m3)', 'Area (m2)', 'Mass (kg)', 'GWP unit value',
   'A1-A3 parametric (K)', 'A1-A3 (L)', 'Distance (km)', 'Weight (ton)',
-  'GWP unit value_ (O, t·km)', 'A4 parametric (P, consolidated)', 'A4 (Q, round-trip)',
+  'GWP unit value_ (O, t·km)', 'A4 parametric (P)', 'A4 (Q)',
   'B4 (R)', 'Total A1-A3 (S)', 'Total A4 (T)', 'Total B4 (U)',
   'Total B6 stud. cal. (V)', 'Intensity load kWh (W)', 'B6 × 0.5894 (X)', 'Total (Y)',
 ]
@@ -174,9 +177,10 @@ export default function SpreadsheetTab() {
             </tbody>
           </table>
           <p className="spreadsheet-intro">
-            Q (round-trip) is the class template's own graded A4 figure; P (consolidated, = M × N × O) is the
-            ISO 14083-style t·km sensitivity. Which is "correct" and why — full step-by-step comparison on the
-            A3 methodology sheet in Deliverables → LCA Reports. B6 (V/W/X) is a single whole-building figure,
+            A4 (O/P/Q) uses the CONSOLIDATED convention (DIN EN ISO 14083 / GLEC Framework: transport activity
+            in t·km × the truck's fleet-average intensity) — adopted app-wide 2026-07-27 in place of the class
+            template's round-trip formula. Why, and how the two compare — full step-by-step on the A3
+            methodology sheet in Deliverables → LCA Reports. B6 (V/W/X) is a single whole-building figure,
             shown once on the first block, never split per assembly.
           </p>
         </div>

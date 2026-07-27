@@ -14,6 +14,7 @@ import { loadFicheDetail } from './ficheStorage.js'
 import { getAllMaterials } from './materialsCatalog.js'
 import { buildLayerCalculationSteps, buildUValueAssemblyStep } from './calculationNarrative.js'
 import { LCA_MODULES, NORMALIZATION, U_VALUE, GLOSSARY, RSP_YEARS } from '../data/lcaMethodology.js'
+import { TRANSPORT_ASSUMPTIONS, getConsolidatedIntensityKgCo2ePerTonneKm } from './transport.js'
 
 export const DEFAULT_DOC_URL = 'https://docs.google.com/document/d/1z8B-IbPrTaZyRzYeJqNMYBN5hlHUN2rSWIqSei-9jv0/edit?tab=t.0'
 export const DEFAULT_DOC_ID = '1z8B-IbPrTaZyRzYeJqNMYBN5hlHUN2rSWIqSei-9jv0'
@@ -205,20 +206,19 @@ export function generateLcaReportText(summaries = [], references = []) {
   lines.push(`    - Unit-declared ('unit'): Quantity = Discrete Count (Window, Door, Skylight)\n`)
 
   // APA Subsection 2.3 (Level 2 Heading)
-  lines.push(`2.3 Freight Transport Logistics Model (Module A4 — DIN EN ISO 14083)`)
+  lines.push(`2.3 Freight Transport Logistics Model (Module A4 — DIN EN ISO 14083, CONSOLIDATED convention)`)
   lines.push(
-    `Transport emissions are modeled according to DIN EN ISO 14083 standard for freight transport logistics. Shipments originate at supplier factory locations, route through the central Detmold logistics hub (300 km leg), and deliver directly to Batavierenplantsoen, Haarlem (300 km leg), establishing a baseline round-trip freight transport distance.`
+    `Transport emissions are modeled per DIN EN ISO 14083 / the GLEC Framework's consolidated-freight attribution: emissions = transport activity (tonne-km) × a fleet-average vehicle intensity, adopted app-wide 2026-07-27 in place of a dedicated-truck round-trip assumption (retained separately for audit — see "A4 methodology" sheet). Shipments route from supplier factory locations through the central Detmold logistics hub to Batavierenplantsoen, Haarlem, using the real one-way routed distance (or a road-route estimate where no route has been fetched).`
   )
-  lines.push(`  Standard Vehicle Parameters (per Class Specification group2_v2):`)
-  lines.push(`    - Vehicle Type: 20t Diesel Transport Truck (Payload Capacity = 20.0 tonnes)`)
-  lines.push(`    - Fuel Consumption: Empty = 26.0 L/100km, Fully Loaded Difference = +10.0 L/100km`)
-  lines.push(`    - Fuel Properties: Diesel Density = 0.84 kg/L, Diesel GHG Factor = 3.14 kg CO₂e / kg fuel`)
+  lines.push(`  Standard Vehicle Parameters (per Class Specification group2_v2!B2:B7):`)
+  lines.push(`    - Vehicle Type: Diesel Transport Truck (Payload Capacity = ${TRANSPORT_ASSUMPTIONS.payloadCapacityTonnes}.0 tonnes)`)
+  lines.push(`    - Fuel Consumption: Empty = ${TRANSPORT_ASSUMPTIONS.emptyConsumptionLPer100Km} L/100km, Fully Loaded Difference = +${TRANSPORT_ASSUMPTIONS.loadedVsEmptyDiffLPer100Km} L/100km`)
+  lines.push(`    - Fuel Properties: Diesel Density = ${TRANSPORT_ASSUMPTIONS.dieselDensityKgPerL} kg/L, Diesel GHG Factor = ${TRANSPORT_ASSUMPTIONS.dieselGhgFactorKgCo2ePerKg} kg CO₂e / kg fuel`)
   lines.push(`  Mathematical Transport Equations:`)
   lines.push(`    1. Cargo Mass (tonnes) = Total_Mass_Kg / 1000`)
-  lines.push(`    2. Fuel Intensity (L/100km) = Empty_Consumption + (Loaded_Diff × (Cargo_Tonnes / 2)) / Payload_Capacity`)
-  lines.push(`    3. Round Trip Distance (km) = 2 × Single_Leg_Distance_Km`)
-  lines.push(`    4. Total Fuel Consumed (L) = (Round_Trip_Km / 100) × Fuel_Intensity`)
-  lines.push(`    5. GWP_A4 (kg CO₂e) = Total_Fuel_L × Diesel_Density_KgPerL × Diesel_GHG_Factor_KgCo2ePerKg\n`)
+  lines.push(`    2. Fleet Intensity (kg CO₂e/t·km) = 2 × (Empty_Consumption + Loaded_Diff) / Payload_Capacity / 100 × Diesel_Density × Diesel_GHG_Factor = ${getConsolidatedIntensityKgCo2ePerTonneKm().toFixed(4)} kg CO₂e/t·km`)
+  lines.push(`    3. Transport Activity (t·km) = Cargo_Tonnes × One_Way_Distance_Km`)
+  lines.push(`    4. GWP_A4 (kg CO₂e) = Transport_Activity_TKm × Fleet_Intensity\n`)
 
   // APA Subsection 2.4 (Level 2 Heading)
   lines.push(`2.4 Component Service Life & In-Use Replacements (Module B4)`)

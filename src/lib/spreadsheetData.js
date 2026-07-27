@@ -14,7 +14,7 @@ import { getAllMaterials } from './materialsCatalog.js'
 import { loadFicheDetail } from './ficheStorage.js'
 import { findProvidersForMaterial } from './geo.js'
 import { loadOperationalEnergySettings } from './operationalEnergyStorage.js'
-import { TRANSPORT_ASSUMPTIONS } from './transport.js'
+import { TRANSPORT_ASSUMPTIONS, estimateTransportCO2RoundTrip } from './transport.js'
 import providers from '../../database/providers.json'
 import referenceLocations from '../../database/reference-locations.json'
 import defaultLayersBySection from '../../database/defaultLayers.json'
@@ -94,7 +94,16 @@ export function getSpreadsheetRows() {
         gwpUnitValue: raw.gwpA1A3PerFunctionalUnit ?? null,
         a1a3: layer.a1a3,
         distanceKm: layer.distanceKm,
+        // a4 is the app's canonical A4 (CONSOLIDATED convention, see
+        // transport.js) — layer.a4CO2Kg already comes out consolidated
+        // since 2026-07-27. a4RoundTrip is computed independently and
+        // explicitly here (never derived from a4) so it stays the true
+        // round-trip reference figure regardless of which convention the
+        // engine's default represents.
         a4: layer.a4CO2Kg,
+        a4RoundTrip: layer.massKg && layer.distanceKm
+          ? estimateTransportCO2RoundTrip({ distanceKm: layer.distanceKm, massKg: layer.massKg }).co2Kg
+          : null,
         a4Consolidated: layer.massKg && layer.distanceKm
           ? (layer.massKg / 1000) * layer.distanceKm * ((2 * (TRANSPORT_ASSUMPTIONS.emptyConsumptionLPer100Km + TRANSPORT_ASSUMPTIONS.loadedVsEmptyDiffLPer100Km) / TRANSPORT_ASSUMPTIONS.payloadCapacityTonnes) / 100 * TRANSPORT_ASSUMPTIONS.dieselDensityKgPerL * TRANSPORT_ASSUMPTIONS.dieselGhgFactorKgCo2ePerKg)
           : null,

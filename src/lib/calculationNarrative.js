@@ -8,7 +8,7 @@
 import { deriveQuantity, UNIT_ASSEMBLY_KEYS } from './lcaAnalysis.js'
 import { getAllMaterials } from './materialsCatalog.js'
 import { loadAssemblyGeometry } from './assemblyGeometryStorage.js'
-import { TRANSPORT_ASSUMPTIONS } from './transport.js'
+import { TRANSPORT_ASSUMPTIONS, getConsolidatedIntensityKgCo2ePerTonneKm } from './transport.js'
 import { SURFACE_RESISTANCE } from './uvalue.js'
 
 // Fixed 'en-US' locale (not `undefined`/the browser's own locale) — this
@@ -130,19 +130,19 @@ export function buildLayerCalculationSteps(assemblyKey, layerResult) {
     steps.push({ module: 'A1-A3', formula: null, substituted: null, result: '—', note: `Not computed: ${layerResult.a1a3Missing ?? 'missing input'}` })
   }
 
-  // --- A4 (DIN EN ISO 14083 — real formula, transport.js) ---
+  // --- A4, CONSOLIDATED convention (DIN EN ISO 14083 / GLEC — transport
+  // activity × fleet intensity, adopted app-wide 2026-07-27; transport.js) ---
   if (layerResult.a4CO2Kg != null && layerResult.massKg != null && layerResult.distanceKm != null) {
     const tonnes = layerResult.massKg / 1000
     const { emptyConsumptionLPer100Km, loadedVsEmptyDiffLPer100Km, payloadCapacityTonnes, dieselDensityKgPerL, dieselGhgFactorKgCo2ePerKg } = TRANSPORT_ASSUMPTIONS
-    const litresPer100Km = emptyConsumptionLPer100Km + (loadedVsEmptyDiffLPer100Km * (tonnes / 2)) / payloadCapacityTonnes
-    const roundTripKm = 2 * layerResult.distanceKm
-    const litres = (roundTripKm / 100) * litresPer100Km
+    const intensity = getConsolidatedIntensityKgCo2ePerTonneKm()
+    const tonneKm = tonnes * layerResult.distanceKm
     steps.push({
       module: 'A4',
-      formula: 'Rate = Empty L/100km + (Δload × (t/2) / payload t); Litres = (2×distance/100) × Rate; A4 = Litres × diesel density × diesel GHG factor',
-      substituted: `Rate = ${emptyConsumptionLPer100Km} + (${loadedVsEmptyDiffLPer100Km} × (${fmt(tonnes, 3)}/2) / ${payloadCapacityTonnes}) = ${fmt(litresPer100Km, 3)} L/100km · ` +
-        `Litres = (2 × ${fmt(layerResult.distanceKm, 1)} / 100) × ${fmt(litresPer100Km, 3)} = ${fmt(litres, 2)} L · ` +
-        `A4 = ${fmt(litres, 2)} L × ${dieselDensityKgPerL} kg/L × ${dieselGhgFactorKgCo2ePerKg} kg CO₂e/kg`,
+      formula: 'Intensity = 2×(Empty+Δload)/payload/100 × dieselDensity × dieselGHG (kg CO2e/t·km); Activity = tonnes × distance (t·km); A4 = Activity × Intensity',
+      substituted: `Intensity = 2×(${emptyConsumptionLPer100Km}+${loadedVsEmptyDiffLPer100Km})/${payloadCapacityTonnes}/100 × ${dieselDensityKgPerL} × ${dieselGhgFactorKgCo2ePerKg} = ${fmt(intensity, 4)} kg CO₂e/t·km · ` +
+        `Activity = ${fmt(tonnes, 3)} t × ${fmt(layerResult.distanceKm, 1)} km = ${fmt(tonneKm, 1)} t·km · ` +
+        `A4 = ${fmt(tonneKm, 1)} t·km × ${fmt(intensity, 4)} kg CO₂e/t·km`,
       result: `${fmt(layerResult.a4CO2Kg, 1)} kg CO₂e`,
       note: `Mass = ${fmt(layerResult.massKg, 1)} kg · one-way routed distance = ${fmt(layerResult.distanceKm, 1)} km (${layerResult.distanceSource ?? 'source not recorded'})`,
     })

@@ -1,6 +1,6 @@
 import React, { forwardRef } from 'react'
 import { classifyAssemblySustainability } from '../lib/sustainabilityRubric.js'
-import { getDetmoldToHaarlemKm, TRANSPORT_ASSUMPTIONS } from '../lib/transport.js'
+import { getDetmoldToHaarlemKm, TRANSPORT_ASSUMPTIONS, getConsolidatedIntensityKgCo2ePerTonneKm } from '../lib/transport.js'
 import { UNIT_ASSEMBLY_KEYS, REFERENCE_STUDY_PERIOD_YEARS } from '../lib/lcaAnalysis.js'
 import { SURFACE_RESISTANCE } from '../lib/uvalue.js'
 import referenceLocations from '../../database/reference-locations.json'
@@ -194,18 +194,22 @@ function HandCalcSection({ summary, b6Result, a1a3Total, a4Total, detmoldLeg }) 
     })
   }
 
-  // Step 3 — A4 (DIN EN ISO 14083, group2_v2 diesel truck)
+  // Step 3 — A4, CONSOLIDATED convention (DIN EN ISO 14083 / GLEC
+  // Framework: transport activity in t·km x a fleet-average intensity for
+  // the same truck, full both ways — the app's default since 2026-07-27;
+  // see transport.js's header comment and the "A4 methodology" A3 sheet
+  // in Deliverables for the round-trip alternative and why the two differ).
   if (example && example.massKg != null && example.distanceKm != null) {
     const tonnes = example.massKg / 1000
-    const lPer100 = T.emptyConsumptionLPer100Km + (T.loadedVsEmptyDiffLPer100Km * (tonnes / 2)) / T.payloadCapacityTonnes
-    const litres = ((2 * example.distanceKm) / 100) * lPer100
+    const intensity = getConsolidatedIntensityKgCo2ePerTonneKm()
+    const tonneKm = tonnes * example.distanceKm
     steps.push({
-      title: `Step 3 — A4 transport (DIN EN ISO 14083, class diesel-truck profile; same example layer)`,
+      title: `Step 3 — A4 transport, consolidated (DIN EN ISO 14083 / GLEC; same example layer)`,
       lines: [
         `mass m = ${r2(example.massKg, 1)} kg = ${r2(tonnes, 3)} t · one-way route D = provider→Detmold + Detmold→Haarlem = ${r2(example.distanceKm - detmoldLeg.distanceKm, 0)} + ${r2(detmoldLeg.distanceKm, 0)} = ${r2(example.distanceKm, 0)} km`,
-        `consumption = ${T.emptyConsumptionLPer100Km} + (${T.loadedVsEmptyDiffLPer100Km} × (${r2(tonnes, 3)} ÷ 2)) ÷ ${T.payloadCapacityTonnes} = ${r2(lPer100, 3)} L/100km`,
-        `fuel = (2 × ${r2(example.distanceKm, 0)} km ÷ 100) × ${r2(lPer100, 3)} = ${r2(litres, 1)} L (round trip)`,
-        `A4 = ${r2(litres, 1)} L × ${T.dieselDensityKgPerL} kg/L × ${T.dieselGhgFactorKgCo2ePerKg} kg CO₂e/kg diesel = ${r2(example.a4CO2Kg, 1)} kg CO₂e`,
+        `intensity = 2×(${T.emptyConsumptionLPer100Km}+${T.loadedVsEmptyDiffLPer100Km})÷${T.payloadCapacityTonnes}÷100 × ${T.dieselDensityKgPerL} × ${T.dieselGhgFactorKgCo2ePerKg} = ${r2(intensity, 4)} kg CO₂e/t·km (same truck, full both ways, shared across its whole payload)`,
+        `transport activity = ${r2(tonnes, 3)} t × ${r2(example.distanceKm, 0)} km = ${r2(tonneKm, 1)} t·km`,
+        `A4 = ${r2(tonneKm, 1)} t·km × ${r2(intensity, 4)} kg CO₂e/t·km = ${r2(example.a4CO2Kg, 1)} kg CO₂e`,
         `Repeat per layer → Σ A4 = ${a4Total != null ? r2(a4Total, 1) : '—'} kg CO₂e.`,
       ],
     })

@@ -7,7 +7,7 @@
 // hand, so this content can't drift from what the app actually computes
 // — same rule lambdaProviders.json/calculationNarrative.js already
 // follow for the same reason.
-import { TRANSPORT_ASSUMPTIONS, DETMOLD_TO_HAARLEM_KM } from '../lib/transport.js'
+import { TRANSPORT_ASSUMPTIONS, DETMOLD_TO_HAARLEM_KM, getConsolidatedIntensityKgCo2ePerTonneKm } from '../lib/transport.js'
 import { SURFACE_RESISTANCE } from '../lib/uvalue.js'
 import { REFERENCE_STUDY_PERIOD_YEARS } from '../lib/lcaAnalysis.js'
 
@@ -48,18 +48,21 @@ export const LCA_MODULES = [
     computed: true,
     formula: [
       'tonnes = massKg / 1000',
-      'litresPer100km = emptyConsumption + (loadedVsEmptyDiff × (tonnes / 2)) / payloadCapacity',
-      'roundTripKm = 2 × distanceKm',
-      'litres = (roundTripKm / 100) × litresPer100km',
-      'CO2e (kg) = litres × dieselDensity × dieselGhgFactor',
+      'intensity (kg CO2e/t·km) = 2×(emptyConsumption+loadedVsEmptyDiff)/payloadCapacity/100 × dieselDensity × dieselGhgFactor',
+      'transportActivity (t·km) = tonnes × distanceKm',
+      'CO2e (kg) = transportActivity × intensity',
     ].join('\n'),
     formulaNote:
-      `Routed manufacturer → Detmold (${DETMOLD_TO_HAARLEM_KM}km fixed leg per the class spreadsheet's ` +
-      "group2_v2!B7, replaced by a real fetched route once available) → Haarlem — never a direct " +
-      'manufacturer-to-site distance. Vehicle/fuel assumptions (group2_v2!B2-B6): empty consumption ' +
+      `CONSOLIDATED convention (DIN EN ISO 14083 / GLEC Framework — transport activity × a fleet-average ` +
+      `intensity for a truck shared across its whole payload), adopted app-wide 2026-07-27 in place of a ` +
+      `dedicated-truck round-trip assumption (kept as a separate reference figure — see the "A4 methodology" ` +
+      `A3 sheet in Deliverables). Routed manufacturer → Detmold (${DETMOLD_TO_HAARLEM_KM}km fixed leg per the ` +
+      "class spreadsheet's group2_v2!B7, replaced by a real fetched route once available) → Haarlem — never a " +
+      'direct manufacturer-to-site distance. Vehicle/fuel assumptions (group2_v2!B2-B6): empty consumption ' +
       `${TRANSPORT_ASSUMPTIONS.emptyConsumptionLPer100Km} L/100km, +${TRANSPORT_ASSUMPTIONS.loadedVsEmptyDiffLPer100Km} ` +
       `L/100km fully loaded, ${TRANSPORT_ASSUMPTIONS.payloadCapacityTonnes}t payload capacity, diesel density ` +
-      `${TRANSPORT_ASSUMPTIONS.dieselDensityKgPerL} kg/L, diesel GHG factor ${TRANSPORT_ASSUMPTIONS.dieselGhgFactorKgCo2ePerKg} kgCO2e/kg.`,
+      `${TRANSPORT_ASSUMPTIONS.dieselDensityKgPerL} kg/L, diesel GHG factor ${TRANSPORT_ASSUMPTIONS.dieselGhgFactorKgCo2ePerKg} ` +
+      `kgCO2e/kg — fleet intensity = ${getConsolidatedIntensityKgCo2ePerTonneKm().toFixed(4)} kg CO2e/t·km.`,
     dataSource: "transport.js — see class spreadsheet LCA-Table-Project-Analysis, sheet group2_v2.",
     description:
       'Emissions from moving one material shipment from factory to site. This project\'s assigned site is ' +

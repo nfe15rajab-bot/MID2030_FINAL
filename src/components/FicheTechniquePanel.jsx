@@ -397,11 +397,50 @@ export default function FicheTechniquePanel({ material, closestToSite }) {
     fetchAndUpgradeRoute(lat, lng)
   }
 
+  // A raw phone-camera photo (often 3-12MB) stored as a base64 data URL
+  // can single-handedly blow past localStorage's ~5-10MB per-origin quota
+  // once combined with every other fiche's own photo + all the app's
+  // other saved data. saveFicheDetail's localStorage.setItem then threw
+  // uncaught, and with no error boundary anywhere in the tree that
+  // crashed the ENTIRE app to a blank page — this is the reported bug.
+  // Fixed two ways: (1) downscale/recompress here so a normal product
+  // photo lands in the tens-to-low-hundreds of KB, not several MB, so the
+  // quota is essentially never hit in practice; (2) saveFicheDetail also
+  // now catches a quota failure defensively (belt and suspenders) instead
+  // of throwing. Neither of these touches any other material's already-
+  // saved research or photos — this only changes how a NEW upload is
+  // encoded before it's ever written to storage.
+  const MAX_PHOTO_DIMENSION_PX = 1280
+  const PHOTO_JPEG_QUALITY = 0.82
+
   function handlePhotoChange(e) {
     const file = e.target.files?.[0]
     if (!file) return
     const reader = new FileReader()
-    reader.onload = () => updateField('photoDataUrl', reader.result)
+    reader.onload = () => {
+      const img = new Image()
+      img.onload = () => {
+        let { width, height } = img
+        if (width > MAX_PHOTO_DIMENSION_PX || height > MAX_PHOTO_DIMENSION_PX) {
+          const scale = MAX_PHOTO_DIMENSION_PX / Math.max(width, height)
+          width = Math.round(width * scale)
+          height = Math.round(height * scale)
+        }
+        const canvas = document.createElement('canvas')
+        canvas.width = width
+        canvas.height = height
+        canvas.getContext('2d').drawImage(img, 0, 0, width, height)
+        updateField('photoDataUrl', canvas.toDataURL('image/jpeg', PHOTO_JPEG_QUALITY))
+      }
+      img.onerror = () => {
+        console.warn('[FicheTechniquePanel] Could not decode the selected image — not saved, nothing else touched.')
+        window.alert('That file could not be read as an image. Try a different photo.')
+      }
+      img.src = reader.result
+    }
+    reader.onerror = () => {
+      console.warn('[FicheTechniquePanel] Could not read the selected file.')
+    }
     reader.readAsDataURL(file)
   }
 

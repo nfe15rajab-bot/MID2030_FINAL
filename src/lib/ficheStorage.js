@@ -44,7 +44,23 @@ function storageKey(materialId) {
  */
 
 export function saveFicheDetail(materialId, detail) {
-  localStorage.setItem(storageKey(materialId), JSON.stringify(detail))
+  try {
+    localStorage.setItem(storageKey(materialId), JSON.stringify(detail))
+  } catch (err) {
+    // Defensive backstop — FicheTechniquePanel.jsx's photo compression
+    // should prevent this in practice, but if storage is genuinely full
+    // (many large fiches, or a browser with a smaller quota), fail
+    // gracefully instead of throwing uncaught out of a setState updater,
+    // which previously crashed the whole app to a blank page with no
+    // error boundary to catch it. This material's PREVIOUS saved detail
+    // (in localStorage) is untouched — setItem never partially writes —
+    // only this one new edit doesn't persist.
+    console.error(`[ficheStorage] Failed to save "${materialId}" locally (storage may be full):`, err.message)
+    if (typeof window !== 'undefined' && err?.name === 'QuotaExceededError') {
+      window.alert('Could not save — local storage is full. If this was a photo, try a smaller image; nothing else was lost.')
+    }
+    return
+  }
   pushToFirestore(materialId, detail)
 }
 

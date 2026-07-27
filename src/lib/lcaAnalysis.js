@@ -376,7 +376,16 @@ export function analyzeLcaAssembly(assemblyKey) {
       // substituted numbers, not re-derive them a second way.
       functionalUnit: material?.functionalUnit ?? null,
       quantity,
-      linearCoverage: material?.linearCoverage ?? 1,
+      // layer overrides material — must match deriveQuantity/deriveMassKg's
+      // own priority above, or this display/export field silently disagrees
+      // with the coverage actually used to compute quantity/mass/a1a3/a4
+      // (caught 2026-07-27: the wall's 260mm cavity insulation carries a
+      // LAYER-level override of 0.4497, but this field was reading only
+      // material.linearCoverage — material?? 1 for this material — so the
+      // spreadsheet/Excel export's live G/K formulas rebuilt the quantity
+      // WITHOUT the coverage multiplier, silently disagreeing with the
+      // correct static L value computed from the real a1a3 above).
+      linearCoverage: layer.linearCoverage ?? material?.linearCoverage ?? 1,
       unitCount: layer.count ?? 1,
       a1a3,
       a1a3Missing,

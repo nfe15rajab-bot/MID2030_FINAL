@@ -5,7 +5,8 @@ const OAUTH_CLIENT_ID = appletConfig.oAuthClientId || appletConfig.clientId || '
 export const GOOGLE_SCOPES = [
   'https://www.googleapis.com/auth/documents',
   'https://www.googleapis.com/auth/drive.file',
-  'https://www.googleapis.com/auth/presentations'
+  'https://www.googleapis.com/auth/presentations',
+  'https://www.googleapis.com/auth/spreadsheets'
 ]
 
 let cachedAccessToken = null

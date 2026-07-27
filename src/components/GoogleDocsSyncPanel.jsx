@@ -22,6 +22,13 @@ import {
   getGooglePresentationMetadata,
   syncLcaResultsToGoogleSlides
 } from '../lib/googleSlidesSync.js'
+import {
+  extractSheetId,
+  getGoogleSheetMetadata,
+  createNewSpreadsheet,
+  pushGroup2DataToGoogleSheet
+} from '../lib/googleSheetsSync.js'
+import { getSpreadsheetRows, getSpreadsheetMeta } from '../lib/spreadsheetData.js'
 import { appendChartImageToDoc } from '../lib/driveImageUpload.js'
 import { captureElementToPngDataUrl } from '../lib/pngExport.js'
 import BarChart from './BarChart.jsx'
@@ -39,9 +46,10 @@ const MODULES_WITH_GRAPHICS = new Set([
 ])
 
 export default function GoogleDocsSyncPanel({ summaries = [], references = [] }) {
-  const [activeTab, setActiveTab] = useState('docs') // 'docs' | 'slides'
+  const [activeTab, setActiveTab] = useState('docs') // 'docs' | 'slides' | 'sheets'
   const [docInput, setDocInput] = useState(DEFAULT_DOC_URL)
   const [slidesInput, setSlidesInput] = useState(DEFAULT_SLIDES_URL)
+  const [sheetInput, setSheetInput] = useState('') // no team default yet — paste one or "Create New"
   const [selectedModule, setSelectedModule] = useState('ALL_THESIS')
   const [user, setUser] = useState(null)
   const [token, setToken] = useState(null)
@@ -49,6 +57,7 @@ export default function GoogleDocsSyncPanel({ summaries = [], references = [] })
   const [statusMsg, setStatusMsg] = useState(null) // { type: 'success' | 'error' | 'info', text: string }
   const [docMetadata, setDocMetadata] = useState(null)
   const [slidesMetadata, setSlidesMetadata] = useState(null)
+  const [sheetMetadata, setSheetMetadata] = useState(null)
   const [imageUploadStatus, setImageUploadStatus] = useState(null) // string | null, shown while uploading chart(s)
 
   // Off-screen copies of the same chart components used elsewhere in the
@@ -124,6 +133,9 @@ export default function GoogleDocsSyncPanel({ summaries = [], references = [] })
 
   const cleanSlidesId = extractPresentationId(slidesInput)
   const slidesWebUrl = `https://docs.google.com/presentation/d/${cleanSlidesId}/edit`
+
+  const cleanSheetId = extractSheetId(sheetInput)
+  const sheetWebUrl = cleanSheetId ? `https://docs.google.com/spreadsheets/d/${cleanSheetId}/edit` : null
 
   async function handleLogin() {
     setLoading(true)
@@ -395,6 +407,87 @@ export default function GoogleDocsSyncPanel({ summaries = [], references = [] })
     }
   }
 
+  // --- Google Sheets Actions ---
+  async function handleVerifySheet() {
+    if (!cleanSheetId) {
+      setStatusMsg({ type: 'error', text: 'Paste a Google Sheet link/ID first, or use "Create New Spreadsheet".' })
+      return
+    }
+    setLoading(true)
+    setStatusMsg(null)
+    try {
+      const accessToken = await ensureToken()
+      if (!accessToken) {
+        setStatusMsg({ type: 'error', text: 'Sign in to Google was cancelled or not completed.' })
+        return
+      }
+      const meta = await getGoogleSheetMetadata(cleanSheetId, accessToken)
+      setSheetMetadata(meta)
+      setStatusMsg({
+        type: 'success',
+        text: `Spreadsheet verified! Title: "${meta.properties?.title || 'Untitled Spreadsheet'}"`
+      })
+    } catch (err) {
+      console.error('Sheet Verification Error:', err)
+      setStatusMsg({ type: 'error', text: `Could not access spreadsheet: ${err.message}. Make sure your account has edit permissions.` })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function handleCreateNewSheet() {
+    setLoading(true)
+    setStatusMsg({ type: 'info', text: 'Creating a new Google Sheet...' })
+    try {
+      const accessToken = await ensureToken()
+      if (!accessToken) {
+        setStatusMsg({ type: 'error', text: 'Sign in to Google was cancelled or not completed.' })
+        return
+      }
+      const res = await createNewSpreadsheet('MID 2030 — Model 1 LCA Data (group2)', accessToken)
+      setSheetInput(res.url)
+      setStatusMsg({ type: 'success', text: `Created a new spreadsheet — you can push data to it now.` })
+    } catch (err) {
+      console.error('Create Sheet Error:', err)
+      setStatusMsg({ type: 'error', text: `Failed to create spreadsheet: ${err.message}` })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function handlePushToSheet() {
+    if (!cleanSheetId) {
+      setStatusMsg({ type: 'error', text: 'Paste a Google Sheet link/ID first, or use "Create New Spreadsheet".' })
+      return
+    }
+    const sheetName = sheetMetadata?.properties?.title || cleanSheetId
+    setLoading(true)
+    setStatusMsg({ type: 'info', text: 'Pushing LCA data (group2 layout) to Google Sheets...' })
+    try {
+      const accessToken = await ensureToken()
+      if (!accessToken) {
+        setStatusMsg({ type: 'error', text: 'Sign in to Google was cancelled or not completed.' })
+        return
+      }
+      const rows = getSpreadsheetRows()
+      const meta = getSpreadsheetMeta()
+      if (rows.length === 0) {
+        setStatusMsg({ type: 'error', text: 'No saved layers yet — nothing to push.' })
+        return
+      }
+      const res = await pushGroup2DataToGoogleSheet(cleanSheetId, rows, meta, accessToken)
+      setStatusMsg({
+        type: 'success',
+        text: `Pushed ${rows.length} rows to the "group2" tab of "${res.spreadsheetTitle || sheetName}" at ${new Date().toLocaleTimeString()}!`
+      })
+    } catch (err) {
+      console.error('Push to Sheet Error:', err)
+      setStatusMsg({ type: 'error', text: `Failed to push data: ${err.message}` })
+    } finally {
+      setLoading(false)
+    }
+  }
+
   return (
     <div className="gdoc-sync-panel">
       {/* Tab Navigation */}
@@ -419,18 +512,30 @@ export default function GoogleDocsSyncPanel({ summaries = [], references = [] })
           </svg>
           Google Slides Deck Sync
         </button>
+        <button
+          className={`gdoc-tab-btn ${activeTab === 'sheets' ? 'active' : ''}`}
+          onClick={() => setActiveTab('sheets')}
+        >
+          <svg className="gdoc-mini-icon" viewBox="0 0 24 24" fill="none">
+            <path d="M19 3H5C3.9 3 3 3.9 3 5V19C3 20.1 3.9 21 5 21H19C20.1 21 21 20.1 21 19V5C21 3.9 20.1 3 19 3Z" fill="#0F9D58" />
+            <path d="M7 8H17V10H7V8ZM7 12H17V14H7V12ZM7 16H13V18H7V16Z" fill="#FFFFFF" opacity="0.9" />
+          </svg>
+          Google Sheets Data Push
+        </button>
       </div>
 
       <div className="gdoc-sync-header">
         <div className="gdoc-sync-title-group">
           <div>
             <h3 className="gdoc-sync-title">
-              {activeTab === 'docs' ? 'Google Docs Report & Modular Sync' : 'Google Slides Assembly Sync'}
+              {activeTab === 'docs' ? 'Google Docs Report & Modular Sync' : activeTab === 'slides' ? 'Google Slides Assembly Sync' : 'Google Sheets LCA Data Push'}
             </h3>
             <p className="gdoc-sync-subtitle">
               {activeTab === 'docs'
                 ? 'Modularly sync specific paragraphs, graphic section diagrams, or full thesis reports with auto-generated Google Docs headings and document outline'
-                : 'Auto-assign assembly LCA metrics (U-value, GWP, freight, layers) directly to matching presentation slides'}
+                : activeTab === 'slides'
+                  ? 'Auto-assign assembly LCA metrics (U-value, GWP, freight, layers) directly to matching presentation slides'
+                  : 'Pushes the exact group2 template layout (same columns/formulas as the Excel export) into a live Google Sheet — every saved layer, real quantities, consolidated A4, B4, B6'}
             </p>
           </div>
         </div>
@@ -492,7 +597,7 @@ export default function GoogleDocsSyncPanel({ summaries = [], references = [] })
             </p>
           </div>
         </div>
-      ) : (
+      ) : activeTab === 'slides' ? (
         <div className="gdoc-doc-input-group">
           <label className="gdoc-input-label">Target Google Slides Deck Link or ID</label>
           <div className="gdoc-input-row">
@@ -513,6 +618,35 @@ export default function GoogleDocsSyncPanel({ summaries = [], references = [] })
               Open Deck ↗
             </a>
           </div>
+        </div>
+      ) : (
+        <div className="gdoc-doc-input-group">
+          <label className="gdoc-input-label">Target Google Sheet Link or ID</label>
+          <div className="gdoc-input-row">
+            <input
+              type="text"
+              className="gdoc-input"
+              value={sheetInput}
+              onChange={(e) => setSheetInput(e.target.value)}
+              placeholder="Paste an existing Google Sheet URL/ID, or click Create New →"
+            />
+            {sheetWebUrl && (
+              <a
+                href={sheetWebUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="gdoc-open-btn"
+                title="Open spreadsheet in Google Sheets"
+              >
+                Open Sheet ↗
+              </a>
+            )}
+          </div>
+          <p style={{ margin: '6px 0 0', fontSize: '0.76rem', color: '#64748b' }}>
+            💡 No team sheet yet? "Create New Spreadsheet" below makes one and fills this in — no existing link needed.
+            Pushing writes the exact same group2 column layout as "Export Excel (class template group2)" into a
+            "group2" tab, overwriting only that tab (nothing else in the spreadsheet is touched).
+          </p>
         </div>
       )}
 
@@ -626,7 +760,7 @@ export default function GoogleDocsSyncPanel({ summaries = [], references = [] })
               📥 Pull Clean State
             </button>
           </>
-        ) : (
+        ) : activeTab === 'slides' ? (
           <>
             <button
               className="gdoc-btn gdoc-btn--outline"
@@ -649,6 +783,32 @@ export default function GoogleDocsSyncPanel({ summaries = [], references = [] })
               title="Delete wrong version and pull/restore latest clean slides state"
             >
               📥 Pull Clean Deck (Delete Wrong Version)
+            </button>
+          </>
+        ) : (
+          <>
+            <button
+              className="gdoc-btn gdoc-btn--outline"
+              onClick={handleVerifySheet}
+              disabled={loading}
+            >
+              🔍 Verify Access
+            </button>
+            <button
+              className="gdoc-btn gdoc-btn--secondary"
+              onClick={handleCreateNewSheet}
+              disabled={loading}
+              title="Creates a brand-new Google Sheet with a group2 tab, ready to push into"
+            >
+              ✨ Create New Spreadsheet
+            </button>
+            <button
+              className="gdoc-btn gdoc-btn--primary"
+              onClick={handlePushToSheet}
+              disabled={loading}
+              title="Writes every saved layer (real quantities, consolidated A4, B4, B6) into the group2 tab"
+            >
+              📤 Push LCA Data to Sheet
             </button>
           </>
         )}

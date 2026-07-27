@@ -12,7 +12,7 @@ import ProviderInfoSuggest from './ProviderInfoSuggest.jsx'
 import AddressAutocomplete from './AddressAutocomplete.jsx'
 import { MARKER_COLORS, providerMarkerColor } from './FicheMap.jsx'
 import referenceLocations from '../../database/reference-locations.json'
-import { loadFicheDetail, saveFicheDetail } from '../lib/ficheStorage.js'
+import { loadFicheDetail, saveFicheDetail, compressAllStoredPhotos } from '../lib/ficheStorage.js'
 import { searchAddress } from '../lib/nominatimClient.js'
 import { roadEstimateKm } from '../lib/geo.js'
 import { fetchRoutedDistanceKm } from '../lib/routingClient.js'
@@ -148,6 +148,7 @@ export default function FicheTechniquePanel({ material, closestToSite }) {
   )
   const [exporting, setExporting] = useState(false)
   const [mapSnapshotUrl, setMapSnapshotUrl] = useState(null)
+  const [cleanupStatus, setCleanupStatus] = useState(null) // string | null — result of the one-time "shrink existing photos" cleanup
   const sheetRef = useRef(null)
   const mapInstanceRef = useRef(null)
 
@@ -444,6 +445,30 @@ export default function FicheTechniquePanel({ material, closestToSite }) {
     reader.readAsDataURL(file)
   }
 
+  // For a browser that already hit the quota wall from photos uploaded
+  // BEFORE the compression fix above existed — those are still stored at
+  // their original, uncompressed size. This re-encodes every existing
+  // photo down to the same standard, in place, keyed by whatever
+  // material it already belonged to — nothing is deleted, only the
+  // stored representation shrinks. See ficheStorage.js's
+  // compressAllStoredPhotos for the full "why".
+  async function handleCompressExistingPhotos() {
+    setCleanupStatus('Compressing existing photos…')
+    try {
+      const res = await compressAllStoredPhotos()
+      const freedKB = Math.round((res.bytesBefore - res.bytesAfter) / 1024)
+      if (res.recompressed === 0) {
+        setCleanupStatus(res.scanned === 0
+          ? 'No stored photos found on this browser — nothing to compress.'
+          : `Checked ${res.scanned} photo(s) — all already small, nothing to shrink.`)
+      } else {
+        setCleanupStatus(`Compressed ${res.recompressed} photo(s), freed ~${freedKB}KB${res.failed ? ` (${res.failed} could not be read, left untouched)` : ''}.`)
+      }
+    } catch (err) {
+      setCleanupStatus(`Could not run cleanup: ${err.message}`)
+    }
+  }
+
   async function handleExportPng() {
     if (!sheetRef.current) return
     setExporting(true)
@@ -612,6 +637,14 @@ export default function FicheTechniquePanel({ material, closestToSite }) {
           Product photo
           <input type="file" accept="image/*" onChange={handlePhotoChange} />
         </label>
+        <p className="fiche-editor-hint">
+          New uploads are auto-compressed, but photos added before this fix may still be large.
+          {' '}
+          <button type="button" className="export-scale-button" style={{ padding: '2px 10px', fontSize: '0.78rem' }} onClick={handleCompressExistingPhotos}>
+            🗜️ Compress existing photos (frees space, keeps every photo)
+          </button>
+          {cleanupStatus && <span style={{ display: 'block', marginTop: '4px' }}>{cleanupStatus}</span>}
+        </p>
 
         <label className="fiche-editor-field">
           End-of-life scenario

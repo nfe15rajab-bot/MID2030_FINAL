@@ -98,6 +98,94 @@ export function loadFicheDetail(materialId) {
   }
 }
 
+// One-time, non-destructive cleanup for browsers that hit the storage
+// quota because photos uploaded BEFORE the 2026-07-27 compression fix
+// (FicheTechniquePanel.jsx's handlePhotoChange) are still sitting at
+// their original, uncompressed size. Re-encodes every already-stored
+// photo down to the same standard (max 1280px, JPEG q=0.82) and writes
+// it back to the SAME key — never removes a photo, never touches any
+// other field on the record, and skips anything already small enough
+// that recompressing would just lose quality for no space gained. Runs
+// across every 'fiche:' key regardless of session prefix, since a
+// browser can carry more than one session's cache.
+const RECOMPRESS_SKIP_UNDER_BYTES = 150 * 1024 // already small — don't re-encode (lossy) for no real gain
+const RECOMPRESS_MAX_DIMENSION_PX = 1280
+const RECOMPRESS_JPEG_QUALITY = 0.82
+
+function recompressDataUrl(dataUrl) {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.onload = () => {
+      let { width, height } = img
+      if (width > RECOMPRESS_MAX_DIMENSION_PX || height > RECOMPRESS_MAX_DIMENSION_PX) {
+        const scale = RECOMPRESS_MAX_DIMENSION_PX / Math.max(width, height)
+        width = Math.round(width * scale)
+        height = Math.round(height * scale)
+      }
+      const canvas = document.createElement('canvas')
+      canvas.width = width
+      canvas.height = height
+      canvas.getContext('2d').drawImage(img, 0, 0, width, height)
+      resolve(canvas.toDataURL('image/jpeg', RECOMPRESS_JPEG_QUALITY))
+    }
+    img.onerror = () => reject(new Error('could not decode existing photo'))
+    img.src = dataUrl
+  })
+}
+
+/**
+ * @returns {Promise<{ scanned: number, recompressed: number, skippedAlreadySmall: number, failed: number, bytesBefore: number, bytesAfter: number }>}
+ */
+export async function compressAllStoredPhotos() {
+  const result = { scanned: 0, recompressed: 0, skippedAlreadySmall: 0, failed: 0, bytesBefore: 0, bytesAfter: 0 }
+  const keys = []
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i)
+    if (k && k.includes('fiche:')) keys.push(k)
+  }
+
+  for (const key of keys) {
+    const raw = localStorage.getItem(key)
+    if (!raw) continue
+    let detail
+    try {
+      detail = JSON.parse(raw)
+    } catch {
+      continue // corrupt entry — leave it exactly as ficheStorage's own reads already do
+    }
+    if (!detail?.photoDataUrl) continue
+    result.scanned += 1
+    const beforeLen = detail.photoDataUrl.length
+
+    if (beforeLen < RECOMPRESS_SKIP_UNDER_BYTES) {
+      result.skippedAlreadySmall += 1
+      continue
+    }
+
+    try {
+      const smaller = await recompressDataUrl(detail.photoDataUrl)
+      // Only keep the recompressed version if it's genuinely smaller —
+      // a photo that's already a small, already-JPEG-compressed image
+      // can occasionally come back slightly larger after a second
+      // lossy pass; never make things worse.
+      if (smaller.length < beforeLen) {
+        detail.photoDataUrl = smaller
+        localStorage.setItem(key, JSON.stringify(detail))
+        result.recompressed += 1
+        result.bytesBefore += beforeLen
+        result.bytesAfter += smaller.length
+      } else {
+        result.skippedAlreadySmall += 1
+      }
+    } catch (err) {
+      console.warn(`[ficheStorage] Could not recompress photo for "${key}":`, err.message)
+      result.failed += 1
+    }
+  }
+
+  return result
+}
+
 // photoDataUrl (an uploaded photo, base64-encoded) is excluded from
 // Firestore entirely — a single decent-resolution photo can approach
 // Firestore's 1 MiB PER-DOCUMENT limit on its own, and this app shares

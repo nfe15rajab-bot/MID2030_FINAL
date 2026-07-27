@@ -15,7 +15,7 @@ export default function LcaConclusionsPanel({ assemblyKey }) {
             <span>🏭</span> A1–A3 Production Stage & Material Drivers
           </div>
           <p className="lca-conclusion-text">
-            Upfront manufacturing carbon is dominated by high-precision technical units (Schüco ASS 77 PD.HI doors @ 285 kg CO₂e/unit; Schüco AWS 75 BS.HI+ windows @ 165 kg CO₂e/unit). Primary aluminium extrusions and multi-pane insulating glass (Ug = 0.5–0.6 W/m²K) represent the primary carbon drivers in the envelope assembly.
+            Upfront manufacturing carbon is dominated by high-precision technical units (Schüco ASE 80.HI sliding doors @ 226.4 kg CO₂e/unit frame + 136.3 glazing, per the externally verified Bau-EPD; Schüco AWS 75 BS.HI+ windows @ 165 kg CO₂e/unit). Aluminium extrusions (77% secondary content in the door's main profiles) and multi-pane insulating glass (Ug ≈ 0.6 W/m²K) represent the primary carbon drivers in the envelope assembly.
           </p>
         </div>
 

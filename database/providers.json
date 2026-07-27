@@ -2,7 +2,7 @@
   {
     "id": "provider-schueco-bielefeld",
     "materialIds": [
-      "door-schueco-ass77",
+      "door-schueco-ase80hi",
       "window-schueco-aws75",
       "door-water-dripping-slot",
       "window-aluminium-angle-fixation",
@@ -61,16 +61,16 @@
     "geocodedAt": "Bielefeld branch"
   },
   {
-    "id": "provider-austrotherm-speyer",
-    "materialIds": ["door-perimeter-insulation"],
-    "name": "Austrotherm Dämmstoffe GmbH",
-    "address": "Speyer, Germany",
-    "website": "https://www.austrotherm.de",
-    "lat": 49.3172,
-    "lng": 8.4322,
-    "distanceToDetmoldKm": 330,
+    "id": "provider-puren-ueberlingen",
+    "materialIds": ["door-purenit-subsill"],
+    "name": "puren gmbh (purenit)",
+    "address": "Rengoldshauser Str. 4, 88662 Überlingen, Germany",
+    "website": "https://www.puren.com",
+    "lat": 47.7789,
+    "lng": 9.159,
+    "distanceToDetmoldKm": 560,
     "distanceToSiteKm": 370,
-    "geocodedAt": "Speyer plant"
+    "geocodedAt": "Überlingen headquarters/plant — replaces Austrotherm (XPS) after the Door-Floor detail specified purenit for the sub-sill; 560 km is a road estimate, refresh via the routing server for the real HGV route"
   },
   {
     "id": "provider-prefa-marktl",

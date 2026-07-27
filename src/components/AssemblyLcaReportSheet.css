@@ -106,6 +106,31 @@
   max-width: 280px;
 }
 
+.lca-sheet-calc {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 4px 0 16px;
+}
+.lca-sheet-calc-step {
+  border: 1px solid #e2ded6;
+  border-radius: 4px;
+  padding: 8px 10px;
+  background: #faf9f6;
+}
+.lca-sheet-calc-title {
+  font-size: 0.78rem;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+.lca-sheet-calc-line {
+  font-size: 0.74rem;
+  line-height: 1.5;
+  color: #333;
+  /* Formula lines substitute long real numbers — wrap, never clip. */
+  overflow-wrap: break-word;
+}
+
 .lca-sheet-conclusions {
   list-style: none;
   margin: 4px 0 16px;

@@ -1,6 +1,8 @@
 import React, { forwardRef } from 'react'
 import { classifyAssemblySustainability } from '../lib/sustainabilityRubric.js'
-import { getDetmoldToHaarlemKm } from '../lib/transport.js'
+import { getDetmoldToHaarlemKm, TRANSPORT_ASSUMPTIONS } from '../lib/transport.js'
+import { UNIT_ASSEMBLY_KEYS, REFERENCE_STUDY_PERIOD_YEARS } from '../lib/lcaAnalysis.js'
+import { SURFACE_RESISTANCE } from '../lib/uvalue.js'
 import referenceLocations from '../../database/reference-locations.json'
 import './AssemblyLcaReportSheet.css'
 
@@ -109,6 +111,157 @@ function totalIfComplete(layerResults, key) {
   return known.length === layerResults.length && layerResults.length > 0
     ? known.reduce((sum, l) => sum + l[key], 0)
     : null
+}
+
+function r2(v, digits = 2) {
+  return v == null ? '—' : Number(v).toFixed(digits)
+}
+
+// Step-by-step hand calculation — every formula here is the EXACT one the
+// app computes with (uvalue.js DIN EN ISO 6946; lcaAnalysis.js
+// deriveQuantity/deriveB4; transport.js group2_v2 diesel formula;
+// calculateB6), with this assembly's real numbers substituted, so a grader
+// can reproduce any figure on this sheet with a pocket calculator. The
+// worked example uses one real layer; the per-layer table above carries
+// the same calculation's result for every other layer.
+function HandCalcSection({ summary, b6Result, a1a3Total, a4Total, detmoldLeg }) {
+  const layers = summary.layerResults ?? []
+  const isUnit = UNIT_ASSEMBLY_KEYS.has(summary.key)
+  const surface = SURFACE_RESISTANCE[summary.key] ?? null
+  const areaM2 = summary.geometry?.surfaceAreaM2 !== '' && summary.geometry?.surfaceAreaM2 != null
+    ? Number(summary.geometry.surfaceAreaM2)
+    : null
+
+  // One fully-known layer as the worked example (first in stack order);
+  // B4 prefers a layer that actually gets replaced so the ceiling formula
+  // shows a non-trivial count.
+  const example = layers.find((l) => l.a1a3 != null && l.massKg != null && l.distanceKm != null && l.quantity != null) ?? null
+  const b4Example = layers.filter((l) => l.b4 != null && l.b4ReplacementCount > 0)[0]
+    ?? layers.find((l) => l.b4 != null)
+    ?? null
+
+  const T = TRANSPORT_ASSUMPTIONS
+  const steps = []
+
+  // Step 1 — U-value (DIN EN ISO 6946)
+  if (isUnit) {
+    steps.push({
+      title: `Step 1 — U-value`,
+      lines: [
+        summary.uValue != null
+          ? `Uw = ${r2(summary.uValue, 3)} W/m²K — manufacturer-declared for the tested unit (glazing + frame + hardware); a layer-stack R = t/λ hand calculation does not apply to a manufactured unit.`
+          : 'Uw not yet entered for this unit.',
+      ],
+    })
+  } else if (surface) {
+    const rLines = layers.map((l, i) => {
+      const t = l.thicknessMM != null ? l.thicknessMM / 1000 : null
+      const r = t != null && l.thermalConductivityWmK > 0 ? t / l.thermalConductivityWmK : null
+      return `R${i + 1} (${trimLabel(l.name, 30)}) = ${r2(t, 4)} m ÷ ${l.thermalConductivityWmK} W/mK = ${r2(r, 3)} m²K/W`
+    })
+    const rSum = layers.reduce((sum, l) => {
+      const t = l.thicknessMM != null ? l.thicknessMM / 1000 : null
+      return sum + (t != null && l.thermalConductivityWmK > 0 ? t / l.thermalConductivityWmK : 0)
+    }, 0)
+    const rTotal = surface.rsi + surface.rse + rSum
+    steps.push({
+      title: 'Step 1 — U-value (DIN EN ISO 6946): Rᵢ = thickness ÷ λ, then U = 1 ÷ (Rsi + ΣRᵢ + Rse)',
+      lines: [
+        ...rLines,
+        `ΣR = ${r2(rSum, 3)} m²K/W · Rsi = ${surface.rsi} (this element's heat-flow direction) · Rse = ${surface.rse}`,
+        `U = 1 ÷ (${surface.rsi} + ${r2(rSum, 3)} + ${surface.rse}) = 1 ÷ ${r2(rTotal, 3)} = ${r2(1 / rTotal, 3)} W/m²K`,
+      ],
+    })
+  }
+
+  // Step 2 — A1-A3
+  if (example) {
+    const qLine =
+      example.functionalUnit === 'm3'
+        ? `Q = area × thickness${example.linearCoverage !== 1 ? ' × coverage' : ''} = ${areaM2 ?? 1} m² × ${r2(example.thicknessMM / 1000, 4)} m${example.linearCoverage !== 1 ? ` × ${example.linearCoverage}` : ''} = ${r2(example.quantity, 3)} m³`
+        : example.functionalUnit === 'm2'
+          ? `Q = area${example.linearCoverage !== 1 ? ' × coverage' : ''} = ${areaM2 ?? 1} m²${example.linearCoverage !== 1 ? ` × ${example.linearCoverage}` : ''} = ${r2(example.quantity, 2)} m²`
+          : example.functionalUnit === 'kg'
+            ? `Q = area × thickness × density${example.linearCoverage !== 1 ? ' × coverage' : ''} = ${areaM2 ?? 1} × ${r2(example.thicknessMM / 1000, 4)} × ${example.densityKgM3}${example.linearCoverage !== 1 ? ` × ${example.linearCoverage}` : ''} = ${r2(example.quantity, 1)} kg`
+            : `Q = number of installed units = ${example.unitCount}`
+    steps.push({
+      title: `Step 2 — A1-A3 product stage (worked example: ${trimLabel(example.name, 40)}): A1-A3 = declared GWP per ${example.functionalUnit ?? 'unit'} × quantity Q`,
+      lines: [
+        qLine,
+        `A1-A3 = ${example.gwpA1A3PerFunctionalUnit} kg CO₂e/${example.functionalUnit ?? 'unit'} × ${r2(example.quantity, 3)} = ${r2(example.a1a3, 1)} kg CO₂e`,
+        `Repeat per layer (results in the table above) → Σ A1-A3 = ${a1a3Total != null ? r2(a1a3Total, 1) : '—'} kg CO₂e for the whole assembly.`,
+      ],
+    })
+  }
+
+  // Step 3 — A4 (DIN EN ISO 14083, group2_v2 diesel truck)
+  if (example && example.massKg != null && example.distanceKm != null) {
+    const tonnes = example.massKg / 1000
+    const lPer100 = T.emptyConsumptionLPer100Km + (T.loadedVsEmptyDiffLPer100Km * (tonnes / 2)) / T.payloadCapacityTonnes
+    const litres = ((2 * example.distanceKm) / 100) * lPer100
+    steps.push({
+      title: `Step 3 — A4 transport (DIN EN ISO 14083, class diesel-truck profile; same example layer)`,
+      lines: [
+        `mass m = ${r2(example.massKg, 1)} kg = ${r2(tonnes, 3)} t · one-way route D = provider→Detmold + Detmold→Haarlem = ${r2(example.distanceKm - detmoldLeg.distanceKm, 0)} + ${r2(detmoldLeg.distanceKm, 0)} = ${r2(example.distanceKm, 0)} km`,
+        `consumption = ${T.emptyConsumptionLPer100Km} + (${T.loadedVsEmptyDiffLPer100Km} × (${r2(tonnes, 3)} ÷ 2)) ÷ ${T.payloadCapacityTonnes} = ${r2(lPer100, 3)} L/100km`,
+        `fuel = (2 × ${r2(example.distanceKm, 0)} km ÷ 100) × ${r2(lPer100, 3)} = ${r2(litres, 1)} L (round trip)`,
+        `A4 = ${r2(litres, 1)} L × ${T.dieselDensityKgPerL} kg/L × ${T.dieselGhgFactorKgCo2ePerKg} kg CO₂e/kg diesel = ${r2(example.a4CO2Kg, 1)} kg CO₂e`,
+        `Repeat per layer → Σ A4 = ${a4Total != null ? r2(a4Total, 1) : '—'} kg CO₂e.`,
+      ],
+    })
+  }
+
+  // Step 4 — B4 (replacement)
+  if (b4Example) {
+    steps.push({
+      title: `Step 4 — B4 replacement (worked example: ${trimLabel(b4Example.name, 40)}): n = ⌈${REFERENCE_STUDY_PERIOD_YEARS} ÷ service life⌉ − 1, B4 = n × (A1-A3 + A4)`,
+      lines: [
+        `n = ⌈${REFERENCE_STUDY_PERIOD_YEARS} ÷ ${b4Example.serviceLifeYears}⌉ − 1 = ${b4Example.b4ReplacementCount} replacement${b4Example.b4ReplacementCount === 1 ? '' : 's'} over the ${REFERENCE_STUDY_PERIOD_YEARS}-year study period`,
+        `B4 = ${b4Example.b4ReplacementCount} × (${r2(b4Example.a1a3, 1)} + ${r2(b4Example.a4CO2Kg, 1)}) = ${r2(b4Example.b4, 1)} kg CO₂e`,
+        `A service life ≥ ${REFERENCE_STUDY_PERIOD_YEARS} yr gives n = 0 — a real zero, not "not assessed".`,
+      ],
+    })
+  }
+
+  // Step 5 — B6 (whole building)
+  const s = b6Result?.settings ?? {}
+  steps.push({
+    title: 'Step 5 — B6 operational energy (whole building): B6 = electricity GWP factor × intensity load × conditioned floor area × study period',
+    lines: [
+      b6Result?.b6 != null
+        ? `B6 = ${s.electricityGwpFactor} kg CO₂e/kWh × ${s.intensityLoad} kWh/m²·yr × ${s.conditionedFloorAreaM2} m² × ${REFERENCE_STUDY_PERIOD_YEARS} yr = ${r2(b6Result.b6, 0)} kg CO₂e`
+        : `Not yet computable — missing ${b6Result?.missing?.join(', ') ?? 'settings'} (Operational Energy settings).`,
+      'A single whole-building figure by definition — never apportioned to one assembly.',
+    ],
+  })
+
+  // Step 6 — end-of-life + normalization
+  const normLines = []
+  normLines.push(
+    'C1 (deconstruction), C3 (waste processing), C4 (disposal) and D (credit) are researched per-layer figures taken directly from each cited EPD/manual basis (no in-app formula), summed only once every layer has a value. C2 (transport to waste facility) reuses the exact Step-3 formula with the shared waste-facility distance.'
+  )
+  if (summary.normalized != null && areaM2 != null) {
+    normLines.push(
+      `Normalized embodied carbon = (Σ A1-A3 + Σ A4) ÷ area ÷ ${REFERENCE_STUDY_PERIOD_YEARS} = (${r2(a1a3Total, 1)} + ${r2(a4Total, 1)}) ÷ ${areaM2} m² ÷ ${REFERENCE_STUDY_PERIOD_YEARS} yr = ${r2(summary.normalized, 2)} kg CO₂e/m²/yr — the figure the sustainability verdict below classifies.`
+    )
+  }
+  steps.push({ title: 'Step 6 — End-of-life modules and normalization', lines: normLines })
+
+  return (
+    <>
+      <div className="fiche-label">Step-by-step hand calculation</div>
+      <div className="lca-sheet-calc">
+        {steps.map((step, i) => (
+          <div key={i} className="lca-sheet-calc-step">
+            <div className="lca-sheet-calc-title">{step.title}</div>
+            {step.lines.map((line, j) => (
+              <div key={j} className="lca-sheet-calc-line">{line}</div>
+            ))}
+          </div>
+        ))}
+      </div>
+    </>
+  )
 }
 
 function StatTile({ label, value, sub, color }) {
@@ -267,6 +420,14 @@ const AssemblyLcaReportSheet = forwardRef(function AssemblyLcaReportSheet({ summ
           })}
         </tbody>
       </table>
+
+      <HandCalcSection
+        summary={summary}
+        b6Result={b6Result}
+        a1a3Total={a1a3Total}
+        a4Total={a4Total}
+        detmoldLeg={detmoldLeg}
+      />
 
       <div className="fiche-label">Conclusions</div>
       <ul className="lca-sheet-conclusions">

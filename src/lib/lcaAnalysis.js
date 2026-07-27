@@ -360,6 +360,14 @@ export function analyzeLcaAssembly(assemblyKey) {
       thermalConductivityWmK: layer.thermalConductivityWmK ?? material?.thermalConductivityWmK ?? null,
       densityKgM3: layer.densityKgM3 ?? material?.densityKgM3 ?? null,
       gwpA1A3PerFunctionalUnit: layer.gwpA1A3PerFunctionalUnit ?? material?.gwpA1A3PerFunctionalUnit ?? null,
+      // Inputs of the A1-A3 formula itself (quantity = deriveQuantity's
+      // result, in functionalUnit's own unit) — surfaced so the report
+      // sheet's step-by-step hand calculation can show the real
+      // substituted numbers, not re-derive them a second way.
+      functionalUnit: material?.functionalUnit ?? null,
+      quantity,
+      linearCoverage: material?.linearCoverage ?? 1,
+      unitCount: layer.count ?? 1,
       a1a3,
       a1a3Missing,
       // Surfaced for Deliverables → Assumptions (deliverablesData.js just

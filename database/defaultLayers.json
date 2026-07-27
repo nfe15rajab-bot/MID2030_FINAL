@@ -197,7 +197,7 @@
       "name": "pro clima INTELLO PLUS — Vapour Control Layer",
       "thicknessMM": 0.4,
       "thermalConductivityWmK": 0.04,
-      "densityKgM3": null,
+      "densityKgM3": 267.5,
       "gwpA1A3PerFunctionalUnit": 0.312,
       "gwpSource": "pro clima official EPD (EPD-IES-0017287), published 06/12/2024",
       "gwpConfidence": "high",
@@ -577,7 +577,7 @@
       "name": "Proclima Intello — Vapour Control Layer, 0.5mm",
       "thicknessMM": 0.5,
       "thermalConductivityWmK": 0.04,
-      "densityKgM3": null,
+      "densityKgM3": 214,
       "gwpA1A3PerFunctionalUnit": 0.312,
       "gwpSource": "pro clima official EPD (EPD-IES-0017287), published 06/12/2024",
       "gwpConfidence": "medium",
@@ -589,7 +589,7 @@
       "eolC4": 0,
       "eolModuleD": -0.126,
       "eolEpcC2": 0.000927,
-      "eolAssumptionBasis": "Vapour control layer between the two interior OSB panels, \"Proclima Intello 0.5mm\" per the source CAD drawing — 0.5mm thickness from the drawing label.",
+      "eolAssumptionBasis": "Vapour control layer between the two interior OSB panels, \"Proclima Intello 0.5mm\" per the source CAD drawing — 0.5mm thickness from the drawing label. Density 214 kg/m³ = the EPD's own 0.107 kg/m² surface mass ÷ 0.5mm, so the transported mass stays EPD-true at this thickness (the wall's 267.5 is the same product normalized to its 0.4mm).",
       "eolSource": "epd"
     },
     {

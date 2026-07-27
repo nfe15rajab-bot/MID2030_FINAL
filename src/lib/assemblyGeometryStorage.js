@@ -15,10 +15,15 @@ function storageKey(assemblyKey) {
 
 /** @typedef {{ surfaceAreaM2: string, volumeM3: string }} AssemblyGeometry */
 
+// Wall/floor/roof areas below are the team's real measured Part A figures
+// (2026-07-27): wall measured from the exterior face, floor and roof
+// measured from the interior face — the standard convention for each
+// (wall envelope vs. usable interior extents). Door/window/skylight are
+// unchanged (no new measurement given for those).
 export const DEFAULT_GEOMETRIES = {
-  roof: { surfaceAreaM2: '18.0', volumeM3: '6.30' },
-  floor: { surfaceAreaM2: '17.0', volumeM3: '6.24' },
-  wall: { surfaceAreaM2: '53.0', volumeM3: '16.96' },
+  roof: { surfaceAreaM2: '20.0', volumeM3: '6.30' },
+  floor: { surfaceAreaM2: '17.17', volumeM3: '6.24' },
+  wall: { surfaceAreaM2: '38.44', volumeM3: '16.96' },
   door: { surfaceAreaM2: '6.0', volumeM3: '0.90' },
   window: { surfaceAreaM2: '3.6', volumeM3: '0.36' },
   skylight: { surfaceAreaM2: '2.0', volumeM3: '0.24' },

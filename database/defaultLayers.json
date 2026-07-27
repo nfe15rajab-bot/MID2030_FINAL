@@ -246,12 +246,13 @@
       "gwpConfidenceLabel": "Official product-specific EPD",
       "serviceLifeYears": 75,
       "serviceLifeSource": "epd",
+      "linearCoverage": 0.4497,
       "eolC1": 0,
       "eolC3": 92.86,
       "eolC4": 0,
       "eolModuleD": -12.86,
       "eolEpcC2": 2,
-      "eolAssumptionBasis": "Main wall cavity insulation, 260mm (200mm + 60mm per source drawing).",
+      "eolAssumptionBasis": "Main wall cavity insulation, 260mm (200mm + 60mm per source drawing). linearCoverage 0.4497 MEASURED (2026-07-27): real batt volume 4.49455298 m3 (26 solid bodies, Rhino cumulative-volume takeoff, studs excluded) vs naive 38.44m2 wall area x 260mm = 9.9944 m3 a continuous slab would claim. Layer-level override (not on the shared wall-steico-flex-036 catalog material) — the 50mm service-void instance of this same product is a different installation context and stays at full flat coverage (1.0) pending its own measurement.",
       "eolSource": "epd"
     },
     {

@@ -81,8 +81,13 @@ export function deriveQuantity(layer, material, geometry, isUnitAssembly) {
   // linearCoverage (0-1) is the real fraction of the area it actually
   // occupies, set on a material that documents its own coverage estimate
   // in `notes` (e.g. roof-aluminum-profile-3mm). Defaults to 1 (no
-  // discount) for every material that doesn't set it.
-  const coverage = material?.linearCoverage ?? 1
+  // discount) for every material that doesn't set it. layer.linearCoverage
+  // takes priority over the material's own value — needed when the SAME
+  // material is used at two genuinely different installation contexts in
+  // one assembly (e.g. wall-steico-flex-036's 260mm main cavity between
+  // studs vs its 50mm service void strip — different real coverage
+  // fractions, one shared catalog id).
+  const coverage = layer.linearCoverage ?? material?.linearCoverage ?? 1
 
   if (functionalUnit === 'm2') {
     return { quantity: areaM2 * coverage, missing: null }
@@ -123,10 +128,11 @@ function deriveMassKg(layer, material, geometry, isUnitAssembly) {
     : (geometry.surfaceAreaM2 !== '' ? Number(geometry.surfaceAreaM2) : null)
   const thicknessM = (layer.thicknessMM ?? material?.thicknessMM) != null ? (layer.thicknessMM ?? material.thicknessMM) / 1000 : null
   const density = layer.densityKgM3 ?? material?.densityKgM3 ?? null
-  // Same linearCoverage discount as deriveQuantity above, applied to mass
-  // too — a trim that's only "really there" over 1.5% of the area
-  // shouldn't be transported/land-filled as if it weighed 100%'s worth.
-  const coverage = material?.linearCoverage ?? 1
+  // Same linearCoverage discount as deriveQuantity above (layer overrides
+  // material, same reasoning) — a trim that's only "really there" over
+  // 1.5% of the area shouldn't be transported/land-filled as if it
+  // weighed 100%'s worth.
+  const coverage = layer.linearCoverage ?? material?.linearCoverage ?? 1
 
   if (areaM2 == null) return { massKg: null, missing: 'assembly surface area not entered (Part A)' }
   if (thicknessM == null) return { massKg: null, missing: 'thickness' }

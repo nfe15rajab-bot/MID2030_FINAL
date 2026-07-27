@@ -96,337 +96,179 @@ function num(v, digits = null) {
   return digits != null ? Number(v.toFixed(digits)) : v
 }
 
-export async function exportSpreadsheetExcel(rows, meta, filename = 'group2_v2-spreadsheet.xlsx') {
+// Template column headers — the EXACT order and labels of the class file
+// "LCA-Table-Project-Analysis_to be finlazied.xlsx", sheet `group2`,
+// columns A→Y (verbatim, including the sheet's own "Transportaion"
+// spelling — the whole point is that this sheet can be pasted into the
+// class workbook column-for-column with zero remapping).
+const TPL_HEADERS = [
+  'Drawing', // A — the class sheet holds a drawing image here; left empty
+  'Group N° +\nWall type (A,B,C)', // B — block label, first row of each assembly only
+  'Layer N°', // C
+  'wall components', // D — layer role (discipline)
+  'material', // E — actual product
+  'Thickness\n(mm)', // F
+  'Volume (m3)', // G — formula, m³/kg-declared rows only
+  'Area(m2)', // H
+  'Mass(kg)', // I
+  'GWP unit value', // J
+  'A1-A3 (GWP) (kgCO2e) \nFor Component (parametric)', // K — formula =H*J / =G*J / =I*J per declared unit
+  'A1-A3 (GWP) (kgCO2e) \nFor Component', // L — computed value
+  'Distance (km)', // M — one-way, routed via Detmold
+  'Weight(ton)', // N — formula =I/1000
+  'GWP unit value_', // O — consolidated transport intensity, kg CO2e per t·km
+  'A4 (Transportaion) (kgCO2e) \nFor Component (parametric)', // P — formula =M*N*O (consolidated convention)
+  'A4 (Transportaion) (kgCO2e) \nFor Component', // Q — round-trip value (class formula, the graded figure)
+  'B4 (Replacement)\n(kgCO2e) \nFor Component', // R
+  'Total \nA1-A3\n(kgCO2e)', // S — block total, first row of each assembly
+  'Total\nA4\n(kgCO2e)', // T
+  'Total\nB4\n(kgCO2e)', // U
+  'Total\nB6 (Oper. Energy)\n(kgCO2e)\n(stud. cal.)', // V — whole building, first block only
+  'Total\nIntensity \nload \n(kwh)', // W — whole building, first block only
+  'Total\nB6\nenergy factor (0.5894)\n(kgCO2e)', // X — =W×0.5894 (professor's factor)
+  'Total\n(kgCO2e)', // Y — =SUM(S,T,U,X), exactly as the template's own Y formula
+]
+
+/**
+ * Primary Excel export — ONE self-contained `group2` worksheet matching
+ * the class template's exact column order (A→Y above). Every formula
+ * references cells on this same sheet only — no second sheet, no other
+ * workbook — so the tab can be copy-pasted into the class master file
+ * without a single #REF!/external link breaking (which is exactly what
+ * happened with the previous multi-sheet layout's cross-sheet parameter
+ * references).
+ */
+export async function exportSpreadsheetExcel(rows, meta, filename = 'group2-LCA-Table.xlsx') {
   const workbook = new ExcelJS.Workbook()
   workbook.creator = 'MID 2030 — Model 1 Assembly Builder'
   workbook.created = new Date()
 
-  // ==========================================
-  // SHEET 1: Prof Thomaz Reference & Overview
-  // ==========================================
-  const overviewSheet = workbook.addWorksheet('Prof Thomaz Reference')
-  overviewSheet.columns = [
-    { header: 'Parameter / Rule Description', width: 45 },
-    { header: 'Value / Reference Standard', width: 55 },
-    { header: 'Unit / Scope', width: 25 },
-    { header: 'Methodological Guidance', width: 60 },
-  ]
+  const ws = workbook.addWorksheet('group2')
 
-  // Title
-  overviewSheet.mergeCells('A1:D1')
-  const titleCell = overviewSheet.getCell('A1')
-  titleCell.value = 'MID 2030 — LCA Methodology & System Boundaries (Professor Thomaz Reference)'
-  titleCell.font = { bold: true, size: 14, color: { argb: 'FF1E3A8A' } }
-  titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDBE8F3' } }
+  // Header row — template labels verbatim, wrapped like the original.
+  const headerRow = ws.getRow(1)
+  TPL_HEADERS.forEach((h, i) => {
+    const cell = headerRow.getCell(i + 1)
+    cell.value = h
+    cell.font = { bold: true, size: 9 }
+    cell.alignment = { wrapText: true, vertical: 'middle', horizontal: 'center' }
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE4E4E0' } }
+  })
+  headerRow.height = 52
+  headerRow.commit()
+  ws.columns.forEach((col, i) => { col.width = i < 5 ? (i === 4 ? 34 : 14) : 12 })
 
-  overviewSheet.mergeCells('A2:D2')
-  const subCell = overviewSheet.getCell('A2')
-  subCell.value = 'Batavierenplantsoen, Haarlem | Integrated LCA Calculation Workbook & Audit Reference'
-  subCell.font = { italic: true, size: 11 }
+  // Consolidated transport intensity (column O) — derived from the class
+  // template's own vehicle parameters, so P (=M*N*O) is the consolidated
+  // t·km convention using the same truck Q's round-trip formula uses:
+  // full 6t truck both ways, shipment bears its tonnage share.
+  const T = meta.transportAssumptions ?? {}
+  const empty = T.emptyConsumptionLPer100Km ?? 16.6
+  const diff = T.loadedVsEmptyDiffLPer100Km ?? 2.4
+  const payload = T.payloadCapacityTonnes ?? 6
+  const density = T.dieselDensityKgPerL ?? 0.832
+  const ghg = T.dieselGhgFactorKgCo2ePerKg ?? 3.74
+  const consolidatedIntensity = Number(((2 * (empty + diff) / payload) / 100 * density * ghg).toFixed(4))
 
-  overviewSheet.addRow([])
-
-  // Section header: System Boundaries
-  const h1 = overviewSheet.addRow(['1. LCA System Boundaries & Calculation Rules', '', '', ''])
-  h1.font = { bold: true, size: 12 }
-  h1.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE2E8F0' } }
-
-  const rules = [
-    ['Standard & Framework', 'EN 15804 + A2 / ISO 14040/44', 'Cradle-to-Grave + Module D', 'Methodological compliance with Professor Thomaz reference workbook'],
-    ['A1-A3 Production Stage', 'Quantity × GWP per Declared Unit', 'kg CO2e', 'Dimensionally consistent: m²×kgCO2e/m², m³×kgCO2e/m³, kg×kgCO2e/kg, unit×kgCO2e/unit'],
-    ['A4 Transport Stage', '2-Way Round Trip (Road Freight)', 'kg CO2e', 'Calculated using weight, fuel consumption, load factor, and diesel emission factor'],
-    ['B4 Replacement Stage', 'MAX(ROUNDUP(50 / LifeSpan, 0) - 1, 0) × (A1-A3 + A4)', 'kg CO2e', '50-year study period; whole replacement cycles accounted for'],
-    ['C1 Demolition / Deconstruction', 'Site assembly specific or 0.0', 'kg CO2e', 'Energy for mechanical dismantling at end of life'],
-    ['C2 Waste Transport', '2 × Distance_Waste × Vehicle_Factor', 'kg CO2e', 'Transport from site to municipal treatment facility (default 30 km)'],
-    ['C3 Waste Processing', 'EPD scenario / Incineration / Downcycling', 'kg CO2e', 'Processing emissions prior to landfill or incineration'],
-    ['C4 Disposal', 'EPD scenario / Inert Landfill', 'kg CO2e', 'Final landfilled mass emissions'],
-    ['Module D Reuse & Recovery', 'Net avoided burden credit', 'kg CO2e', 'Recycling credit / energy recovery offset outside system boundary'],
-    ['B6 Operational Energy Use', 'IntensityLoad × ElectricityFactor × Area', 'kg CO2e / yr', 'Annual operational electricity load multiplied by grid GHG factor'],
-  ]
-
-  rules.forEach((r) => overviewSheet.addRow(r))
-
-  overviewSheet.addRow([])
-
-  // Section header: Transport Parameters
-  const h2 = overviewSheet.addRow(['2. Transport Vehicle & Fuel Parameters (Referenced by Sheet 3 Formulas)', '', '', ''])
-  h2.font = { bold: true, size: 12 }
-  h2.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDBE8F3' } }
-
-  const emptyCons = meta.transportAssumptions?.emptyConsumptionLPer100Km ?? 16.6
-  const loadedDiff = meta.transportAssumptions?.loadedVsEmptyDiffLPer100Km ?? 2.4
-  const payload = meta.transportAssumptions?.payloadCapacityTonnes ?? 6.0
-  const dieselDensity = meta.transportAssumptions?.dieselDensityKgPerL ?? 0.832
-  const dieselGhg = meta.transportAssumptions?.dieselGhgFactorKgCo2ePerKg ?? 3.74
-  const wasteDist = meta.settings?.wasteFacilityDistanceKm ?? 30.0
-
-  overviewSheet.addRow(['Consume empty vehicle', emptyCons, 'l / 100km', 'Base empty truck fuel consumption']) // Row 17 (index 17)
-  overviewSheet.addRow(['Diff fully loaded − empty', loadedDiff, 'l / 100km', 'Incremental fuel usage for full 20t load'])
-  overviewSheet.addRow(['Payload capacity', payload, 'tonnes', 'Standard heavy road freight capacity'])
-  overviewSheet.addRow(['Diesel density', dieselDensity, 'kg / l', 'Standard fuel physical density'])
-  overviewSheet.addRow(['Diesel GHG factor', dieselGhg, 'kg CO2e / kg fuel', 'Well-to-wheel greenhouse gas intensity'])
-  overviewSheet.addRow(['Waste facility distance', wasteDist, 'km', 'Default distance to Haarlem municipal waste processing plant'])
-
-  overviewSheet.addRow([])
-
-  // Section header: Timber & Source Hierarchy
-  const h3 = overviewSheet.addRow(['3. Timber Biogenic Carbon & Source Quality Guidelines', '', '', ''])
-  h3.font = { bold: true, size: 12 }
-  h3.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD9ECDF' } }
-
-  const guidelines = [
-    ['Timber / OSB Biogenic Carbon', 'GWP-total preserved including biogenic storage', 'kg CO2e / FU', 'Negative GWP (~-1.6 to -1.8 kg CO2e/kg dry wood) reflects sequestered carbon per EN 15804'],
-    ['Source Hierarchy Level 1', 'Verified Manufacturer EPD', 'Highest confidence', 'Product-specific third-party verified EPD (e.g. STEICO, Schüco, Fakro)'],
-    ['Source Hierarchy Level 2', 'Generic ÖKOBAUDAT Dataset', 'High confidence', 'National LCA database match for material category'],
-    ['Source Hierarchy Level 3', 'Technical Datasheet / Product Spec', 'Medium confidence', 'Physical properties from manufacturer, GWP estimated from category proxy'],
-    ['Source Hierarchy Level 4', 'Manufacturer Webpage / Proxy', 'Assumed', 'Industry benchmark proxy value flagged for manual verification'],
-  ]
-  guidelines.forEach((g) => overviewSheet.addRow(g))
-
-  // ==========================================
-  // SHEET 2: Prof Thomaz Reference Analysis
-  // ==========================================
-  const summarySheet = workbook.addWorksheet('Prof Thomaz Reference Analysis')
-  summarySheet.columns = [
-    { header: 'Assembly / Element', width: 22 },
-    { header: 'Area (m²)', width: 14 },
-    { header: 'Total Weight (kg)', width: 18 },
-    { header: 'A1-A3 Production (kgCO2e)', width: 24 },
-    { header: 'A4 Transport (kgCO2e)', width: 22 },
-    { header: 'B4 Replacement (kgCO2e)', width: 24 },
-    { header: 'C1-C4 End-of-Life (kgCO2e)', width: 24 },
-    { header: 'Module D Credit (kgCO2e)', width: 22 },
-    { header: 'Total Embodied GWP (kgCO2e)', width: 26 },
-    { header: 'Normalized GWP (kgCO2e/m²)', width: 24 },
-  ]
-
-  // Header formatting
-  const sumHeaderRow = summarySheet.getRow(1)
-  sumHeaderRow.font = { bold: true, color: { argb: 'FFFFFFFF' } }
-  sumHeaderRow.eachCell((cell) => {
-    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E293B' } }
-    cell.alignment = { horizontal: 'center', vertical: 'middle' }
+  // Group rows into assembly blocks (rows arrive already ordered by
+  // assembly — see getSpreadsheetRows' section loop).
+  const blocks = []
+  rows.forEach((r) => {
+    const last = blocks[blocks.length - 1]
+    if (!last || last.key !== r.assemblyKey) blocks.push({ key: r.assemblyKey, label: r.assemblyDrawing, rows: [] })
+    blocks[blocks.length - 1].rows.push(r)
   })
 
-  const assemblyKeys = [
-    ['Wall Assembly', 'Wall'],
-    ['Roof Assembly', 'Roof'],
-    ['Floor Assembly', 'Floor'],
-    ['Door Unit', 'Door'],
-    ['Window Unit', 'Window'],
-    ['Skylight Unit', 'Skylight'],
-  ]
+  let rowCursor = 2
+  blocks.forEach((block, blockIdx) => {
+    const startRow = rowCursor
+    const endRow = startRow + block.rows.length - 1
 
-  // Detail sheet name reference
-  const DET = "'Detailed LCA & Material Audit'"
+    block.rows.forEach((r, i) => {
+      const rn = rowCursor
+      const isUnitRow = r.functionalUnit === 'unit'
+      const excelRow = ws.getRow(rn)
 
-  assemblyKeys.forEach(([label, code], idx) => {
-    const rowNum = idx + 2
-    summarySheet.addRow({
-      'Assembly / Element': label,
-      'Area (m²)': { formula: `IFERROR(AVERAGEIFS(${DET}!$K$3:$K$150, ${DET}!$A$3:$A$150, "*${code}*"), 0)` },
-      'Total Weight (kg)': { formula: `SUMIF(${DET}!$A$3:$A$150, "*${code}*", ${DET}!$L$3:$L$150)` },
-      'A1-A3 Production (kgCO2e)': { formula: `SUMIF(${DET}!$A$3:$A$150, "*${code}*", ${DET}!$O$3:$O$150)` },
-      'A4 Transport (kgCO2e)': { formula: `SUMIF(${DET}!$A$3:$A$150, "*${code}*", ${DET}!$Q$3:$Q$150)` },
-      'B4 Replacement (kgCO2e)': { formula: `SUMIF(${DET}!$A$3:$A$150, "*${code}*", ${DET}!$U$3:$U$150)` },
-      'C1-C4 End-of-Life (kgCO2e)': { formula: `SUMIF(${DET}!$A$3:$A$150, "*${code}*", ${DET}!$V$3:$V$150)+SUMIF(${DET}!$A$3:$A$150, "*${code}*", ${DET}!$W$3:$W$150)+SUMIF(${DET}!$A$3:$A$150, "*${code}*", ${DET}!$X$3:$X$150)+SUMIF(${DET}!$A$3:$A$150, "*${code}*", ${DET}!$Y$3:$Y$150)` },
-      'Module D Credit (kgCO2e)': { formula: `SUMIF(${DET}!$A$3:$A$150, "*${code}*", ${DET}!$Z$3:$Z$150)` },
-      'Total Embodied GWP (kgCO2e)': { formula: `D${rowNum}+E${rowNum}+F${rowNum}+G${rowNum}` },
-      'Normalized GWP (kgCO2e/m²)': { formula: `IF(B${rowNum}>0, I${rowNum}/B${rowNum}, 0)` },
-    })
-  })
+      const setCell = (col, value) => { ws.getCell(`${col}${rn}`).value = value }
 
-  // Grand total row
-  const totRow = summarySheet.addRow({
-    'Assembly / Element': 'Grand Total (Whole Building)',
-    'Area (m²)': { formula: 'SUM(B2:B4)' }, // Wall, roof, floor floor area
-    'Total Weight (kg)': { formula: 'SUM(C2:C7)' },
-    'A1-A3 Production (kgCO2e)': { formula: 'SUM(D2:D7)' },
-    'A4 Transport (kgCO2e)': { formula: 'SUM(E2:E7)' },
-    'B4 Replacement (kgCO2e)': { formula: 'SUM(F2:F7)' },
-    'C1-C4 End-of-Life (kgCO2e)': { formula: 'SUM(G2:G7)' },
-    'Module D Credit (kgCO2e)': { formula: 'SUM(H2:H7)' },
-    'Total Embodied GWP (kgCO2e)': { formula: 'SUM(I2:I7)' },
-    'Normalized GWP (kgCO2e/m²)': { formula: 'IF(B8>0, I8/B8, 0)' },
-  })
-
-  totRow.eachCell((cell) => {
-    cell.font = { bold: true }
-    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFCBD5E1' } }
-  })
-
-  // ==========================================
-  // SHEET 3: Detailed LCA & Material Audit (3rd Sheet requested)
-  // ==========================================
-  const detailSheet = workbook.addWorksheet('Detailed LCA & Material Audit')
-  detailSheet.columns = COLUMNS.map(([header]) => ({ header, width: Math.max(header.length + 2, 12) }))
-
-  const dataStartRow = 3
-  const dataEndRow = dataStartRow + rows.length - 1
-  const totalsRowNum = dataEndRow + 1
-
-  // Band row (row 1)
-  let colCursor = 1
-  const bandRow = detailSheet.getRow(1)
-  for (const [label, span, band] of BAND_SPANS) {
-    detailSheet.mergeCells(1, colCursor, 1, colCursor + span - 1)
-    const cell = bandRow.getCell(colCursor)
-    cell.value = label
-    cell.font = { bold: true }
-    cell.alignment = { horizontal: 'center', vertical: 'middle' }
-    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: BAND_FILL[band] } }
-    colCursor += span
-  }
-  bandRow.commit()
-
-  // Column-label row (row 2)
-  const labelRow = detailSheet.getRow(2)
-  COLUMNS.forEach(([header, , band], i) => {
-    const cell = labelRow.getCell(i + 1)
-    cell.value = header
-    cell.font = { bold: true }
-    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: BAND_FILL[band] } }
-  })
-  labelRow.commit()
-
-  // Ref helper for Sheet 1 transport params
-  const OVR = "'Prof Thomaz Reference'"
-  const OVR_EMPTY = `${OVR}!$B$17`
-  const OVR_DIFF = `${OVR}!$B$18`
-  const OVR_PAYLOAD = `${OVR}!$B$19`
-  const OVR_DENSITY = `${OVR}!$B$20`
-  const OVR_GHG = `${OVR}!$B$21`
-  const OVR_WASTE_DIST = `${OVR}!$B$22`
-
-  // Data rows
-  rows.forEach((r, i) => {
-    const row = dataStartRow + i
-    const c2IsEpdPublished = r.c2Source === 'EPD-published'
-    const isUnitRow = r.functionalUnit === 'unit'
-
-    // Determine audit provenance label and notes
-    let provenance = 'Generic EPD / ÖKOBAUDAT'
-    let auditNote = 'FU & Geometry Verified; Dimensionally Consistent'
-
-    if (r.epdTypeLink && (r.epdTypeLink.includes('STEICO') || r.epdTypeLink.includes('Schüco') || r.epdTypeLink.includes('Fakro') || r.epdTypeLink.includes('Kronoply'))) {
-      provenance = 'Verified Manufacturer EPD'
-    } else if (r.functionalUnit === 'unit') {
-      provenance = 'Manufacturer Unit Spec'
-      auditNote = 'Unit assembly (Door/Window/Skylight) mass-based calculation'
-    } else if (!r.epdTypeLink || r.epdTypeLink.includes('generic') || r.epdTypeLink.includes('Assumed')) {
-      provenance = 'Assumed Proxy / Category Match'
-      auditNote = 'Estimated value flagged for review'
-    }
-
-    if (r.gwpUnitValue != null && r.gwpUnitValue < 0) {
-      auditNote += ' | Timber biogenic carbon storage preserved'
-    }
-
-    const cells = {
-      assemblyDrawing: r.assemblyDrawing ?? null,
-      layerNo: r.layerNo ?? null,
-      layerName: r.layerName ?? null,
-      layerDescription: r.layerDescription ?? null,
-      material: r.material ?? null,
-      company: r.company ?? null,
-      epdTypeLink: r.epdTypeLink ?? null,
-      thicknessMM: r.thicknessMM ?? null,
-      densityKgM3: r.densityKgM3 ?? null,
-      volumeM3: isUnitRow ? null : {
-        formula: `IF(OR(${ref('areaM2', row)}="",${ref('thicknessMM', row)}=""),"",${ref('areaM2', row)}*${ref('thicknessMM', row)}/1000)`,
-      },
-      areaM2: r.areaM2 ?? null,
-      weightKg: isUnitRow ? num(r.weightKg, 1) : {
-        formula: `IF(OR(${ref('volumeM3', row)}="",${ref('densityKgM3', row)}=""),"",${ref('volumeM3', row)}*${ref('densityKgM3', row)})`,
-      },
-      functionalUnit: r.functionalUnit ?? null,
-      gwpUnitValue: r.gwpUnitValue ?? null,
-      a1a3: isUnitRow ? num(r.a1a3, 1) : {
-        formula: `IF(${ref('gwpUnitValue', row)}="","TBD",`
-          + `IF(${ref('functionalUnit', row)}="m2",${ref('areaM2', row)}*${ref('gwpUnitValue', row)},`
-          + `IF(${ref('functionalUnit', row)}="m3",${ref('volumeM3', row)}*${ref('gwpUnitValue', row)},`
-          + `IF(${ref('functionalUnit', row)}="kg",${ref('weightKg', row)}*${ref('gwpUnitValue', row)},"check FU"))))`,
-      },
-      distanceKm: r.distanceKm ?? null,
-      a4: isUnitRow ? num(r.a4, 1) : {
-        formula: `IF(OR(${ref('distanceKm', row)}="",${ref('weightKg', row)}=""),"TBD",`
-          + `(2*${ref('distanceKm', row)})*(${OVR_EMPTY}+(${OVR_DIFF}*((${ref('weightKg', row)}/1000)/2)/${OVR_PAYLOAD}))`
-          + `/100*${OVR_DENSITY}*${OVR_GHG})`,
-      },
-      lifeSpanYears: r.lifeSpanYears ?? null,
-      replacementCount: {
-        formula: `IF(OR(${ref('lifeSpanYears', row)}="",${ref('lifeSpanYears', row)}<=0),"",MAX(ROUNDUP(50/${ref('lifeSpanYears', row)},0)-1,0))`,
-      },
-      b4: {
-        formula: `IF(OR(${ref('replacementCount', row)}="",ISTEXT(${ref('a1a3', row)}),ISTEXT(${ref('a4', row)})),"not yet assessed",`
-          + `${ref('replacementCount', row)}*(${ref('a1a3', row)}+${ref('a4', row)}))`,
-      },
-      c1: r.c1 != null ? num(r.c1, 3) : null,
-      c2: c2IsEpdPublished
-        ? (r.c2 != null ? num(r.c2, 3) : null)
-        : {
-          formula: `IF(${ref('weightKg', row)}="","TBD",`
-            + `(2*${OVR_WASTE_DIST})*(${OVR_EMPTY}+(${OVR_DIFF}*((${ref('weightKg', row)}/1000)/2)/${OVR_PAYLOAD}))`
-            + `/100*${OVR_DENSITY}*${OVR_GHG})`,
-        },
-      c3: r.c3 != null ? num(r.c3, 3) : null,
-      c4: r.c4 != null ? num(r.c4, 3) : null,
-      moduleD: r.moduleD != null ? num(r.moduleD, 3) : null,
-      intensityLoad: r.intensityLoad ?? null,
-      electricityFactor: r.electricityFactor ?? null,
-      b6PerM2Yearly: {
-        formula: `IF(OR(${ref('intensityLoad', row)}="",${ref('electricityFactor', row)}=""),"",${ref('intensityLoad', row)}*${ref('electricityFactor', row)})`,
-      },
-      conditionedFloorAreaM2: r.conditionedFloorAreaM2 ?? null,
-      b6YearlySpace: {
-        formula: `IF(OR(${ref('b6PerM2Yearly', row)}="",${ref('conditionedFloorAreaM2', row)}=""),"",${ref('b6PerM2Yearly', row)}*${ref('conditionedFloorAreaM2', row)})`,
-      },
-      sourceProvenance: provenance,
-      auditNote: auditNote,
-    }
-
-    const excelRow = detailSheet.getRow(row)
-    COLUMNS.forEach(([, key]) => {
-      const cell = excelRow.getCell(colIndex[key])
-      const v = cells[key]
-      if (v && typeof v === 'object' && 'formula' in v) {
-        cell.value = { formula: v.formula }
-      } else {
-        cell.value = v
-        if (v != null && INPUT_KEYS.has(key)) cell.font = { color: { argb: INPUT_FONT_COLOR } }
+      // A Drawing — image placeholder in the class sheet, left empty.
+      if (i === 0) setCell('B', `2/${block.label}`)
+      setCell('C', r.layerNo ?? i + 1)
+      setCell('D', r.layerName ?? null)
+      setCell('E', r.material ?? null)
+      setCell('F', r.thicknessMM ?? null)
+      // linearCoverage: discrete/linear elements (edge trim, battens)
+      // declared "as if" covering the whole area — the app's quantity
+      // discounts by the real coverage fraction, so the parametric G/K
+      // formulas must carry the same literal multiplier or they'd
+      // overstate those rows vs the app's own A1-A3 (column L).
+      const cov = r.linearCoverage != null && r.linearCoverage !== 1 ? `*${r.linearCoverage}` : ''
+      if (!isUnitRow && (r.functionalUnit === 'm3' || r.functionalUnit === 'kg')) {
+        setCell('G', { formula: `IF(OR(H${rn}="",F${rn}=""),"",H${rn}*F${rn}/1000${cov})` })
       }
+      if (!isUnitRow) setCell('H', r.areaM2 ?? null)
+      setCell('I', r.weightKg != null && Number.isFinite(r.weightKg) ? Number(r.weightKg.toFixed(1)) : null)
+      setCell('J', r.gwpUnitValue ?? null)
+      // K parametric — same per-declared-unit formula shape as the
+      // template's own rows (=H*J for m², =G*J for m³, =I*J for kg;
+      // ×count for a Door/Window/Skylight unit, ×coverage where the
+      // material declares one — G already carries coverage for m³/kg).
+      const kFormula = r.functionalUnit === 'm2' ? `IF(OR(H${rn}="",J${rn}=""),"",H${rn}*J${rn}${cov})`
+        : r.functionalUnit === 'm3' ? `IF(OR(G${rn}="",J${rn}=""),"",G${rn}*J${rn})`
+          : r.functionalUnit === 'kg' ? `IF(OR(I${rn}="",J${rn}=""),"",I${rn}*J${rn})`
+            : isUnitRow ? `IF(J${rn}="","",J${rn}*${r.unitCount ?? 1})` : null
+      if (kFormula) setCell('K', { formula: kFormula })
+      setCell('L', r.a1a3 != null && Number.isFinite(r.a1a3) ? Number(r.a1a3.toFixed(2)) : null)
+      setCell('M', r.distanceKm != null && Number.isFinite(r.distanceKm) ? Number(r.distanceKm.toFixed(1)) : null)
+      setCell('N', { formula: `IF(I${rn}="","",I${rn}/1000)` })
+      setCell('O', consolidatedIntensity)
+      setCell('P', { formula: `IF(OR(M${rn}="",N${rn}="",O${rn}=""),"",M${rn}*N${rn}*O${rn})` })
+      setCell('Q', r.a4 != null && Number.isFinite(r.a4) ? Number(r.a4.toFixed(2)) : null)
+      setCell('R', r.b4 != null && Number.isFinite(r.b4) ? Number(r.b4.toFixed(2)) : null)
+
+      excelRow.commit()
+      rowCursor += 1
     })
-    excelRow.commit()
+
+    // Block totals on the block's first row — same placement as the
+    // template (each wall type's S..Y sit on its first material row).
+    const first = startRow
+    ws.getCell(`S${first}`).value = { formula: `SUM(L${startRow}:L${endRow})` }
+    ws.getCell(`T${first}`).value = { formula: `SUM(Q${startRow}:Q${endRow})` }
+    const allB4Known = block.rows.every((r) => r.b4 != null)
+    ws.getCell(`U${first}`).value = allB4Known ? { formula: `SUM(R${startRow}:R${endRow})` } : 'not yet assessed'
+    if (blockIdx === 0) {
+      // B6 is a single whole-building figure — written once, on the first
+      // block, never split per assembly (see the legend below).
+      ws.getCell(`V${first}`).value = meta.b6Total != null ? Number(meta.b6Total.toFixed(1)) : null
+      const kwhYearly = meta.settings?.intensityLoad != null && meta.settings?.conditionedFloorAreaM2 != null
+        ? meta.settings.intensityLoad * meta.settings.conditionedFloorAreaM2
+        : null
+      ws.getCell(`W${first}`).value = kwhYearly != null ? Number(kwhYearly.toFixed(2)) : null
+      ws.getCell(`X${first}`).value = { formula: `IF(W${first}="","",W${first}*0.5894)` }
+    }
+    ws.getCell(`Y${first}`).value = { formula: `SUM(S${first},T${first},U${first},X${first})` }
   })
 
-  // Totals row
-  const dataRange = (key) => `${ref(key, dataStartRow)}:${ref(key, dataEndRow)}`
-  const totalsRow = detailSheet.getRow(totalsRowNum)
-  totalsRow.getCell(1).value = 'Total'
-  totalsRow.getCell(1).font = { bold: true }
-  totalsRow.getCell(colIndex.a1a3).value = { formula: `SUM(${dataRange('a1a3')})` }
-  totalsRow.getCell(colIndex.a4).value = { formula: `SUM(${dataRange('a4')})` }
-  totalsRow.getCell(colIndex.b4).value = {
-    formula: `IF(COUNTIF(${dataRange('b4')},"not yet assessed")>0,"not yet assessed",SUM(${dataRange('b4')}))`,
-  }
-  totalsRow.getCell(colIndex.b6YearlySpace).value = { formula: `${ref('b6YearlySpace', dataStartRow)}` }
-  totalsRow.eachCell((cell) => { cell.font = { ...(cell.font || {}), bold: true } })
-  totalsRow.commit()
+  // Legend — same sheet, below the data, so nothing is lost when this
+  // single tab is copied into the class master workbook.
+  let legendRow = rowCursor + 2
+  const legend = [
+    ['LEGEND & ASSUMPTIONS (all formulas on this sheet reference this sheet only — no external sheet/workbook links)'],
+    [`Transport vehicle (class template B2:B7): empty consumption ${empty} L/100km · fully-loaded diff ${diff} L/100km · payload ${payload} t · diesel density ${density} kg/L · diesel GHG factor ${ghg} kg CO2e/kg`],
+    [`Column Q (graded figure) = ROUND-TRIP dedicated-truck formula from the class template: (2×M)×(${empty}+${diff}×(N/2)/${payload})/100×${density}×${ghg} — truck delivers and returns empty.`],
+    [`Column O = ${consolidatedIntensity} kg CO2e/t·km — CONSOLIDATED intensity from the same truck: 2×(${empty}+${diff})/${payload}/100×${density}×${ghg}; column P (=M×N×O) is the ISO 14083-style t·km sensitivity figure. See the "A4 methodology — round trip vs consolidated" A3 sheet in the app's Deliverables for the full step-by-step.`],
+    ['Column M = one-way distance routed manufacturer → Detmold hub → Haarlem (real OpenRouteService route where fetched, road-route estimate = straight-line × 1.2 otherwise).'],
+    ['Columns V/W/X (first row only): B6 is a single whole-building figure — V = student-calculated B6 over the 50-yr study period; W = intensity load × conditioned floor area (kWh/yr); X = W × 0.5894 (professor\'s electricity factor). Y = SUM(S,T,U,X) per the template.'],
+    ['Generated by the MID 2030 Model 1 Assembly Builder — values mirror the app\'s LCA Summary/Deliverables tabs.'],
+  ]
+  legend.forEach((l) => {
+    const cell = ws.getCell(`A${legendRow}`)
+    cell.value = l[0]
+    cell.font = { italic: true, size: 9, color: { argb: 'FF666666' } }
+    legendRow += 1
+  })
 
-  // Summary row
-  const summaryRow = detailSheet.getRow(totalsRowNum + 1)
-  summaryRow.getCell(1).value = {
-    formula: `"Total distance (round trip): "&TEXT(2*SUM(${dataRange('distanceKm')}),"0")&" km"`,
-  }
-  summaryRow.getCell(colIndex.weightKg).value = {
-    formula: `"Total weight: "&TEXT(SUM(${dataRange('weightKg')}),"0.0")&" kg"`,
-  }
-  summaryRow.getCell(colIndex.b6YearlySpace).value = {
-    formula: `"B6 over 50yr: "&TEXT(${ref('b6YearlySpace', dataStartRow)}*50,"0.0")&" kg CO2e"`,
-  }
-  summaryRow.commit()
-
-  // Save/Download buffer
   const buffer = await workbook.xlsx.writeBuffer()
   const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
   const url = URL.createObjectURL(blob)

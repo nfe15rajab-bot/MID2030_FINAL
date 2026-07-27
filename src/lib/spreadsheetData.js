@@ -8,7 +8,7 @@
 // needs (thickness, density, materialId, the per-unit GWP value) — those
 // come from the matching raw saved layer, zipped in by index (layerResults
 // is built via layers.map(), so the order always lines up).
-import { ASSEMBLIES, analyzeLcaAssembly, calculateB6 } from './lcaAnalysis.js'
+import { ASSEMBLIES, UNIT_ASSEMBLY_KEYS, analyzeLcaAssembly, calculateB6 } from './lcaAnalysis.js'
 import { loadSection } from './sectionStorage.js'
 import { getAllMaterials } from './materialsCatalog.js'
 import { loadFicheDetail } from './ficheStorage.js'
@@ -46,7 +46,14 @@ export function getSpreadsheetRows() {
         ? findProvidersForMaterial(raw.materialId, providers, referenceLocations)
         : { closestToSite: null }
 
-      const areaM2 = result.geometry?.surfaceAreaM2 !== '' ? Number(result.geometry?.surfaceAreaM2) : null
+      // Door/Window/Skylight membrane sub-layers are quantified per
+      // installation (area pinned to 1 m², see deriveQuantity's
+      // isUnitAssembly branch) — the row must carry that same basis or a
+      // template-layout =H×J formula would silently double the app's own
+      // A1-A3 for those rows whenever the entered unit area isn't 1.
+      const areaM2 = UNIT_ASSEMBLY_KEYS.has(key)
+        ? 1
+        : result.geometry?.surfaceAreaM2 !== '' ? Number(result.geometry?.surfaceAreaM2) : null
       const thicknessM = raw.thicknessMM != null ? raw.thicknessMM / 1000 : null
       const volumeM3 = areaM2 != null && thicknessM != null ? areaM2 * thicknessM : null
 
@@ -77,6 +84,13 @@ export function getSpreadsheetRows() {
         areaM2,
         weightKg: layer.massKg,
         functionalUnit: material?.functionalUnit ?? null,
+        // Real coverage fraction / unit count behind the app's quantity —
+        // the template-layout export bakes these into its parametric K/G
+        // formulas so they reproduce the app's A1-A3 exactly (a batten
+        // covering 1.5% of the area, or a 2-unit skylight, would
+        // otherwise be silently mis-stated by the plain =H*J shape).
+        linearCoverage: layer.linearCoverage ?? material?.linearCoverage ?? 1,
+        unitCount: layer.unitCount ?? raw.count ?? 1,
         gwpUnitValue: raw.gwpA1A3PerFunctionalUnit ?? null,
         a1a3: layer.a1a3,
         distanceKm: layer.distanceKm,

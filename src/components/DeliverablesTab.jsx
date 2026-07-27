@@ -20,6 +20,7 @@ import referenceLocations from '../../database/reference-locations.json'
 import A4ReportDraft from './A4ReportDraft.jsx'
 import A3PosterDraft from './A3PosterDraft.jsx'
 import AssemblyLcaReportSheet from './AssemblyLcaReportSheet.jsx'
+import TransportMethodologyA3 from './TransportMethodologyA3.jsx'
 import EpdReferenceListPanel from './EpdReferenceListPanel.jsx'
 import GlobalProviderMap from './GlobalProviderMap.jsx'
 import SectionPreview from './SectionPreview.jsx'
@@ -682,7 +683,12 @@ export default function DeliverablesTab() {
 
       {subTab === 'Report' && <A4ReportSection />}
 
-      {subTab === 'LCA Reports' && <AssemblyLcaReportsSection />}
+      {subTab === 'LCA Reports' && (
+        <>
+          <AssemblyLcaReportsSection />
+          <TransportMethodologyA3 />
+        </>
+      )}
 
       {subTab === 'Material Audit' && <HinalMaterialAuditReport />}
 
@@ -703,7 +709,10 @@ export default function DeliverablesTab() {
               </button>
             </div>
             <p className="deliverable-note">
-              "Export Excel Matching Reference" matches Professor Thomaz's reference workbook layout with individual assembly worksheets (Assembly_1 Wall, Assembly_2 Floor, Assembly_3 Roof, Assembly_4 Door, Assembly_5 Window, Assembly_6 Skylight) linked to a master ANALYSIS summary tab via live Excel formulas.
+              "Export Excel" writes ONE self-contained <code>group2</code> sheet in the class template's exact
+              A→Y column order (all formulas reference that sheet only — no external sheet/workbook links), so
+              it can be pasted straight into the class master file. "Export Excel Matching Reference" is the
+              multi-worksheet variant (Assembly_1…6 linked to a master ANALYSIS tab via live in-workbook formulas).
             </p>
           </div>
 

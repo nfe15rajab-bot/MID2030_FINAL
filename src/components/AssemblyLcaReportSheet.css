@@ -146,6 +146,22 @@
   line-height: 1.4;
 }
 
+/* A3-landscape variant (TransportMethodologyA3.jsx) — wider fixed capture
+   width, two-column step layout. */
+.fiche-sheet.lca-a3-sheet {
+  width: 1400px;
+  max-width: 1400px;
+}
+.lca-a3-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.lca-a3-columns .lca-sheet-calc-step { margin: 0; }
+.lca-a3-columns .lca-sheet-calc-line { font-size: 0.8rem; }
+.lca-a3-columns .lca-sheet-calc-title { font-size: 0.85rem; }
+
 .lca-sheet-footer {
   border-top: 1px solid #ccc;
   padding-top: 8px;

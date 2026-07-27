@@ -7,21 +7,49 @@ function fmt(n, digits = 1) {
   return n != null && Number.isFinite(n) ? n.toFixed(digits) : '—'
 }
 
-// Live, read-only mirror of the class's own "Architectural Elements
-// Description" + LCA-phase spreadsheet layout (group2_v2-style) — same
-// column grouping and header bands, but every cell is pulled from
-// whatever's actually saved in this app (sectionStorage, fiche research,
-// Operational Energy settings) rather than typed in here. Export buttons
-// produce real .xlsx workbooks (flat list or separate assembly worksheets).
+// Live, read-only mirror of the class template — column-for-column the
+// EXACT A→Y order of "LCA-Table-Project-Analysis_to be finlazied.xlsx",
+// sheet group2 (same order the Excel export writes), so what's on screen
+// is literally what lands in the class workbook. Every cell is pulled
+// from whatever's actually saved in this app (sectionStorage, fiche
+// research, Operational Energy settings) rather than typed in here.
+//
+// Two A4 columns on purpose, same as the export: Q is the class
+// template's own round-trip dedicated-truck figure (the graded number),
+// P is the consolidated t·km sensitivity (= M × N × O) — see the "A4
+// methodology — round trip vs consolidated" A3 sheet in Deliverables.
+const TPL_COLS = [
+  'Drawing', 'Group N° + type', 'Layer N°', 'wall components', 'material',
+  'Thickness (mm)', 'Volume (m3)', 'Area (m2)', 'Mass (kg)', 'GWP unit value',
+  'A1-A3 parametric (K)', 'A1-A3 (L)', 'Distance (km)', 'Weight (ton)',
+  'GWP unit value_ (O, t·km)', 'A4 parametric (P, consolidated)', 'A4 (Q, round-trip)',
+  'B4 (R)', 'Total A1-A3 (S)', 'Total A4 (T)', 'Total B4 (U)',
+  'Total B6 stud. cal. (V)', 'Intensity load kWh (W)', 'B6 × 0.5894 (X)', 'Total (Y)',
+]
+
 export default function SpreadsheetTab() {
   const rows = getSpreadsheetRows()
   const meta = getSpreadsheetMeta()
 
-  const totalA1A3 = rows.reduce((sum, r) => sum + (r.a1a3 ?? 0), 0)
-  const totalA4 = rows.reduce((sum, r) => sum + (r.a4 ?? 0), 0)
-  const totalB4 = rows.length > 0 && rows.every((r) => r.b4 != null) ? rows.reduce((sum, r) => sum + r.b4, 0) : null
-  const totalDistanceRoundTrip = rows.reduce((sum, r) => sum + (r.distanceKm != null ? r.distanceKm * 2 : 0), 0)
-  const totalWeight = rows.reduce((sum, r) => sum + (r.weightKg ?? 0), 0)
+  const T = meta.transportAssumptions
+  const consolidatedIntensity = Number(
+    ((2 * (T.emptyConsumptionLPer100Km + T.loadedVsEmptyDiffLPer100Km) / T.payloadCapacityTonnes) / 100
+      * T.dieselDensityKgPerL * T.dieselGhgFactorKgCo2ePerKg).toFixed(4)
+  )
+
+  // Group into assembly blocks — totals sit on each block's first row,
+  // same placement as the template's own S..Y columns.
+  const blocks = []
+  rows.forEach((r) => {
+    const last = blocks[blocks.length - 1]
+    if (!last || last.key !== r.assemblyKey) blocks.push({ key: r.assemblyKey, label: r.assemblyDrawing, rows: [] })
+    blocks[blocks.length - 1].rows.push(r)
+  })
+
+  const kwhYearly = meta.settings?.intensityLoad != null && meta.settings?.conditionedFloorAreaM2 != null
+    ? meta.settings.intensityLoad * meta.settings.conditionedFloorAreaM2
+    : null
+  const b6Prof = kwhYearly != null ? kwhYearly * 0.5894 : null
 
   async function handleExport() {
     await exportSpreadsheetExcel(rows, meta)
@@ -33,21 +61,22 @@ export default function SpreadsheetTab() {
 
   return (
     <div className="spreadsheet-tab">
-      <h2 className="spreadsheet-heading">Spreadsheet (group2_v2 layout)</h2>
+      <h2 className="spreadsheet-heading">Spreadsheet (class template layout — group2, columns A→Y)</h2>
       <p className="spreadsheet-intro">
-        Live mirror of the class template's column layout — auto-filled from saved layers, providers,
-        and fiche research; nothing typed in here. Export produces the identical layout as a real .xlsx.
+        Live mirror of the class template's exact column order — auto-filled from saved layers, providers,
+        and fiche research; nothing typed in here. The export writes one self-contained <code>group2</code>
+        sheet (formulas reference this sheet only — no external sheet/workbook links), so the tab can be
+        pasted straight into the class master file.
       </p>
 
       <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
         <button type="button" className="spreadsheet-export-button" onClick={handleExport} disabled={rows.length === 0}>
-          Export .xlsx (Integrated)
+          Export .xlsx (class template group2)
         </button>
         <button type="button" className="spreadsheet-export-button" style={{ backgroundColor: '#2d6a4f' }} onClick={handleReferenceExport} disabled={rows.length === 0}>
           Export Excel Matching Reference
         </button>
       </div>
-
 
       {rows.length === 0 ? (
         <p className="empty-state">
@@ -59,104 +88,69 @@ export default function SpreadsheetTab() {
           <table className="spreadsheet-table">
             <thead>
               <tr>
-                <th colSpan={12} className="band band--description">Architectural Elements Description</th>
-                <th colSpan={3} className="band band--gwp">LCA Production Stage (GWP)</th>
-                <th colSpan={2} className="band band--transport">Transportation</th>
-                <th colSpan={3} className="band band--replacement">Replacement Stage</th>
-                <th colSpan={5} className="band band--eol">End-of-life (C1-C4/D)</th>
-                <th colSpan={5} className="band band--energy">Operation Energy Use Stage</th>
-              </tr>
-              <tr>
-                <th>Assembly Drawing</th>
-                <th>Layer N°</th>
-                <th>Layer Name</th>
-                <th>Layer Description</th>
-                <th>Material</th>
-                <th>Company</th>
-                <th>EPD Type/Link</th>
-                <th>Thickness (mm)</th>
-                <th>Density (kg/m³)</th>
-                <th>Volume (m³)</th>
-                <th>Area (m²)</th>
-                <th>Weight (kg)</th>
-                <th>Funct. Unit</th>
-                <th>GWP unit value</th>
-                <th>A1-A3 (kgCO2e)</th>
-                <th>Distance (km)</th>
-                <th>A4 (kgCO2e)</th>
-                <th>Life Span (yr)</th>
-                <th>Replacements /50yr</th>
-                <th>B4 (kgCO2e)</th>
-                <th>C1</th>
-                <th>C2</th>
-                <th>C3</th>
-                <th>C4</th>
-                <th>D (credit)</th>
-                <th>Intensity (kWh/m²/yr)</th>
-                <th>Electricity factor</th>
-                <th>B6/m²/yr</th>
-                <th>Cond. floor area (m²)</th>
-                <th>B6 yearly, whole space (kgCO2e)</th>
+                {TPL_COLS.map((c) => <th key={c}>{c}</th>)}
               </tr>
             </thead>
             <tbody>
-              {rows.map((r, i) => (
-                <tr key={i}>
-                  <td>{r.assemblyDrawing}</td>
-                  <td>{r.layerNo}</td>
-                  <td>{r.layerName}</td>
-                  <td className="spreadsheet-cell--wide">{r.layerDescription || '—'}</td>
-                  <td className="spreadsheet-cell--wide">{r.material}</td>
-                  <td>{r.company}</td>
-                  <td className="spreadsheet-cell--wide">{r.epdTypeLink}</td>
-                  <td>{r.thicknessMM ?? '—'}</td>
-                  <td>{r.densityKgM3 ?? '—'}</td>
-                  <td>{fmt(r.volumeM3, 4)}</td>
-                  <td>{r.areaM2 ?? '—'}</td>
-                  <td>{fmt(r.weightKg, 1)}</td>
-                  <td>{r.functionalUnit ?? '—'}</td>
-                  <td>{r.gwpUnitValue ?? '—'}</td>
-                  <td>{fmt(r.a1a3, 1)}</td>
-                  <td>{fmt(r.distanceKm, 0)}</td>
-                  <td>{fmt(r.a4, 1)}</td>
-                  <td>{r.lifeSpanYears ?? '—'}</td>
-                  <td>{r.replacementCount ?? '—'}</td>
-                  <td>{fmt(r.b4, 1)}</td>
-                  <td>{fmt(r.c1, 1)}</td>
-                  <td>{fmt(r.c2, 1)}</td>
-                  <td>{fmt(r.c3, 1)}</td>
-                  <td>{fmt(r.c4, 1)}</td>
-                  <td>{fmt(r.moduleD, 1)}</td>
-                  <td>{r.intensityLoad ?? '—'}</td>
-                  <td>{r.electricityFactor ?? '—'}</td>
-                  <td>{fmt(r.b6PerM2Yearly, 3)}</td>
-                  <td>{r.conditionedFloorAreaM2 ?? '—'}</td>
-                  <td>{fmt(r.b6YearlySpace, 1)}</td>
-                </tr>
-              ))}
+              {blocks.map((block, blockIdx) => {
+                const sTotal = block.rows.reduce((sum, r) => sum + (r.a1a3 ?? 0), 0)
+                const tTotal = block.rows.reduce((sum, r) => sum + (r.a4 ?? 0), 0)
+                const uKnown = block.rows.every((r) => r.b4 != null)
+                const uTotal = uKnown ? block.rows.reduce((sum, r) => sum + r.b4, 0) : null
+                const xVal = blockIdx === 0 ? b6Prof : null
+                const yTotal = sTotal + tTotal + (uTotal ?? 0) + (xVal ?? 0)
+
+                return block.rows.map((r, i) => {
+                  const isUnitRow = r.functionalUnit === 'unit'
+                  const cov = r.linearCoverage ?? 1
+                  const volume = !isUnitRow && (r.functionalUnit === 'm3' || r.functionalUnit === 'kg') && r.areaM2 != null && r.thicknessMM != null
+                    ? r.areaM2 * r.thicknessMM / 1000 * cov
+                    : null
+                  const kParametric = r.gwpUnitValue == null ? null
+                    : r.functionalUnit === 'm2' && r.areaM2 != null ? r.areaM2 * r.gwpUnitValue * cov
+                      : r.functionalUnit === 'm3' && volume != null ? volume * r.gwpUnitValue
+                        : r.functionalUnit === 'kg' && r.weightKg != null ? r.weightKg * r.gwpUnitValue
+                          : isUnitRow ? r.gwpUnitValue * (r.unitCount ?? 1) : null
+                  const weightTon = r.weightKg != null ? r.weightKg / 1000 : null
+                  const pConsolidated = r.distanceKm != null && weightTon != null
+                    ? r.distanceKm * weightTon * consolidatedIntensity
+                    : null
+
+                  return (
+                    <tr key={`${block.key}-${i}`}>
+                      <td />
+                      <td>{i === 0 ? `2/${block.label}` : ''}</td>
+                      <td>{r.layerNo}</td>
+                      <td>{r.layerName}</td>
+                      <td className="spreadsheet-cell--wide">{r.material}</td>
+                      <td>{r.thicknessMM ?? '—'}</td>
+                      <td>{fmt(volume, 4)}</td>
+                      <td>{isUnitRow ? '—' : (r.areaM2 ?? '—')}</td>
+                      <td>{fmt(r.weightKg, 1)}</td>
+                      <td>{r.gwpUnitValue ?? '—'}</td>
+                      <td>{fmt(kParametric, 2)}</td>
+                      <td>{fmt(r.a1a3, 2)}</td>
+                      <td>{fmt(r.distanceKm, 1)}</td>
+                      <td>{fmt(weightTon, 3)}</td>
+                      <td>{consolidatedIntensity}</td>
+                      <td>{fmt(pConsolidated, 2)}</td>
+                      <td>{fmt(r.a4, 2)}</td>
+                      <td>{fmt(r.b4, 2)}</td>
+                      <td className="spreadsheet-cell--total">{i === 0 ? fmt(sTotal, 1) : ''}</td>
+                      <td className="spreadsheet-cell--total">{i === 0 ? fmt(tTotal, 1) : ''}</td>
+                      <td className="spreadsheet-cell--total">{i === 0 ? (uKnown ? fmt(uTotal, 1) : 'not yet assessed') : ''}</td>
+                      <td className="spreadsheet-cell--total">{i === 0 && blockIdx === 0 ? fmt(meta.b6Total, 1) : ''}</td>
+                      <td className="spreadsheet-cell--total">{i === 0 && blockIdx === 0 ? fmt(kwhYearly, 2) : ''}</td>
+                      <td className="spreadsheet-cell--total">{i === 0 && blockIdx === 0 ? fmt(xVal, 1) : ''}</td>
+                      <td className="spreadsheet-cell--total">{i === 0 ? fmt(yTotal, 1) : ''}</td>
+                    </tr>
+                  )
+                })
+              })}
             </tbody>
-            <tfoot>
-              <tr>
-                <td colSpan={14}><strong>Total</strong></td>
-                <td>{fmt(totalA1A3, 1)}</td>
-                <td />
-                <td>{fmt(totalA4, 1)}</td>
-                <td colSpan={2} />
-                <td>{totalB4 != null ? fmt(totalB4, 1) : 'not yet assessed'}</td>
-                <td colSpan={5} />
-                <td colSpan={4} />
-                <td>{fmt(rows[0]?.b6YearlySpace, 1)}</td>
-              </tr>
-              <tr>
-                <td colSpan={30} className="spreadsheet-total-weight">
-                  Total distance (round trip): {fmt(totalDistanceRoundTrip, 0)} km · Total weight: {fmt(totalWeight, 1)} kg ·
-                  {' '}B6 over 50yr: {fmt(meta.b6Total, 1)} kg CO₂e
-                </td>
-              </tr>
-            </tfoot>
           </table>
 
-          <h3 className="spreadsheet-subheading">Transport vehicle assumptions (group2_v2!B2:B7)</h3>
+          <h3 className="spreadsheet-subheading">Transport vehicle assumptions (class template B2:B7)</h3>
           <table className="spreadsheet-table spreadsheet-table--assumptions">
             <thead>
               <tr>
@@ -165,18 +159,26 @@ export default function SpreadsheetTab() {
                 <th>Payload capacity (tonnes)</th>
                 <th>Diesel density (kg/l)</th>
                 <th>Diesel GHG factor (kg CO2e/kg)</th>
+                <th>Consolidated intensity O (kg CO2e/t·km, derived)</th>
               </tr>
             </thead>
             <tbody>
               <tr>
-                <td>{meta.transportAssumptions.emptyConsumptionLPer100Km}</td>
-                <td>{meta.transportAssumptions.loadedVsEmptyDiffLPer100Km}</td>
-                <td>{meta.transportAssumptions.payloadCapacityTonnes}</td>
-                <td>{meta.transportAssumptions.dieselDensityKgPerL}</td>
-                <td>{meta.transportAssumptions.dieselGhgFactorKgCo2ePerKg}</td>
+                <td>{T.emptyConsumptionLPer100Km}</td>
+                <td>{T.loadedVsEmptyDiffLPer100Km}</td>
+                <td>{T.payloadCapacityTonnes}</td>
+                <td>{T.dieselDensityKgPerL}</td>
+                <td>{T.dieselGhgFactorKgCo2ePerKg}</td>
+                <td>{consolidatedIntensity}</td>
               </tr>
             </tbody>
           </table>
+          <p className="spreadsheet-intro">
+            Q (round-trip) is the class template's own graded A4 figure; P (consolidated, = M × N × O) is the
+            ISO 14083-style t·km sensitivity. Which is "correct" and why — full step-by-step comparison on the
+            A3 methodology sheet in Deliverables → LCA Reports. B6 (V/W/X) is a single whole-building figure,
+            shown once on the first block, never split per assembly.
+          </p>
         </div>
       )}
     </div>

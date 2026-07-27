@@ -63,6 +63,11 @@
 }
 .deliverable-preview .a4-report { transform-origin: top center; }
 
+/* Per-assembly LCA report sheets are a fixed 800px (deterministic
+   html2canvas capture width) — let the preview box scroll rather than
+   squeezing the sheet. */
+.lca-report-preview { max-height: 640px; }
+
 .fiche-deliverable-row {
   display: flex;
   flex-direction: column;

@@ -14,7 +14,7 @@ import { MARKER_COLORS, providerMarkerColor } from './FicheMap.jsx'
 import referenceLocations from '../../database/reference-locations.json'
 import { loadFicheDetail, saveFicheDetail } from '../lib/ficheStorage.js'
 import { searchAddress } from '../lib/nominatimClient.js'
-import { haversineKm } from '../lib/geo.js'
+import { roadEstimateKm } from '../lib/geo.js'
 import { fetchRoutedDistanceKm } from '../lib/routingClient.js'
 import { saveRouteDistance } from '../lib/routeDistanceStorage.js'
 import { useSharedData } from '../hooks/useSharedData.js'
@@ -78,20 +78,20 @@ const EMPTY_DETAIL = {
   circularitySource: null,
 }
 
-// Straight-line (haversine) distance from a resolved provider location to
-// both reference points, the moment real coordinates exist — same
-// "geometric estimate, not a routing API" methodology geo.js's
-// findProvidersForMaterial already uses for providers.json entries.
-// Rounded to the nearest km since sub-km precision is false confidence
-// for a straight-line estimate feeding a fixed-factor transport calc.
+// Road-route estimate (haversine × 1.2 circuity factor — see geo.js's
+// ROAD_ROUTE_FACTOR rationale) from a resolved provider location to both
+// reference points, the moment real coordinates exist — same methodology
+// geo.js's findProvidersForMaterial already uses for providers.json
+// entries. Rounded to the nearest km since sub-km precision is false
+// confidence for an estimate feeding a fixed-factor transport calc.
 function computeProviderDistances(lat, lng) {
   const { site, detmoldFactory } = referenceLocations
-  const toSiteKm = haversineKm({ lat, lng }, site)
-  const toDetmoldKm = haversineKm({ lat, lng }, detmoldFactory)
+  const toSiteKm = roadEstimateKm({ lat, lng }, site)
+  const toDetmoldKm = roadEstimateKm({ lat, lng }, detmoldFactory)
   return {
     providerDistanceKm: toSiteKm != null ? String(Math.round(toSiteKm)) : '',
     providerDistanceToDetmoldKm: toDetmoldKm != null ? String(Math.round(toDetmoldKm)) : '',
-    providerDistanceSource: toDetmoldKm != null ? 'haversine' : null,
+    providerDistanceSource: toDetmoldKm != null ? 'road-estimate' : null,
   }
 }
 
@@ -727,8 +727,8 @@ export default function FicheTechniquePanel({ material, closestToSite }) {
               {' '}Distance to Detmold: <strong>{detail.providerDistanceToDetmoldKm} km</strong>
               {detail.providerDistanceSource === 'routed' ? (
                 <span className="service-life-badge service-life-badge--verified"> Real road route (OpenRouteService)</span>
-              ) : detail.providerDistanceSource === 'haversine' ? (
-                <span className="service-life-badge service-life-badge--unverified"> Fetching real route… (showing straight-line estimate)</span>
+              ) : detail.providerDistanceSource === 'road-estimate' || detail.providerDistanceSource === 'haversine' ? (
+                <span className="service-life-badge service-life-badge--unverified"> Fetching real route… (showing road-route estimate)</span>
               ) : null}
               {' '}— this is what the LCA and EPD tab's A4 calc actually routes through, not the Haarlem figure above.
             </>

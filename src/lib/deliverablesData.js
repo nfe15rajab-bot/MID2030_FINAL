@@ -14,7 +14,7 @@ import { loadFicheDetail } from './ficheStorage.js'
 import { getAllMaterials } from './materialsCatalog.js'
 import { loadSection } from './sectionStorage.js'
 import { classifyAssemblySustainability } from './sustainabilityRubric.js'
-import { haversineKm } from './geo.js'
+import { roadEstimateKm } from './geo.js'
 import providers from '../../database/providers.json'
 import referenceLocations from '../../database/reference-locations.json'
 import defaultLayersBySection from '../../database/defaultLayers.json'
@@ -237,10 +237,11 @@ export function getGlobalLcaSummary() {
 }
 
 /**
- * Straight-line-to-site concentration stats for the "Global EPD" report
- * section — same computation GlobalProviderMap.jsx renders as a map,
- * exposed here as plain data so the DOCX/PDF report can present it as a
- * real table instead of a screenshot of the map.
+ * Road-route-estimate-to-site concentration stats for the "Global EPD"
+ * report section (haversine × 1.2 circuity factor, see geo.js) — same
+ * computation GlobalProviderMap.jsx renders as a map, exposed here as
+ * plain data so the DOCX/PDF report can present it as a real table
+ * instead of a screenshot of the map.
  */
 export function getGlobalProviderStats() {
   const { site } = referenceLocations
@@ -251,7 +252,7 @@ export function getGlobalProviderStats() {
       name: p.name,
       address: p.address,
       materialIds: p.materialIds,
-      distanceToSiteKm: haversineKm({ lat: p.lat, lng: p.lng }, site),
+      distanceToSiteKm: roadEstimateKm({ lat: p.lat, lng: p.lng }, site),
     }))
     .sort((a, b) => a.distanceToSiteKm - b.distanceToSiteKm)
 

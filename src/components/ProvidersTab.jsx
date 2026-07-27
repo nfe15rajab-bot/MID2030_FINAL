@@ -341,7 +341,7 @@ export default function ProvidersTab() {
                     {closestToSite.distanceToDetmoldKmSource === 'routed' ? (
                       <span className="service-life-badge service-life-badge--verified"> Real road route (OpenRouteService)</span>
                     ) : (
-                      <span className="service-life-badge service-life-badge--unverified"> Straight-line estimate</span>
+                      <span className="service-life-badge service-life-badge--unverified"> Road-route estimate</span>
                     )}
                     {' '}— feeds the LCA and EPD tab's A4 transport calc.
                     <button type="button" onClick={handleGetRealRoute} disabled={fetchingRoute}>

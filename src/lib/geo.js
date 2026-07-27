@@ -1,12 +1,20 @@
-// Straight-line (haversine) distance — matches the "geometric estimate"
-// method already used in the group2 Excel tab. Real road distance is now
-// available too (OpenRouteService driving-hgv — see routingClient.js/
-// routeDistanceStorage.js): findProvidersForMaterial below checks the
-// route cache first and only falls back to haversine when no real route
-// has been fetched yet for that provider (via the "Get real route" button
-// in ProvidersTab.jsx). haversineKm itself stays a synchronous, no-cache
-// primitive — the instant estimate every distance starts as.
+// Distance primitives. Real road distance comes first (OpenRouteService
+// driving-hgv — see routingClient.js/routeDistanceStorage.js):
+// findProvidersForMaterial below checks the route cache and only falls
+// back to an estimate when no real route has been fetched yet for that
+// pair (via the "Get real route" button in ProvidersTab.jsx).
+//
+// The fallback is a ROAD-ROUTE ESTIMATE, not the raw straight-line
+// (haversine) figure: haversine × ROAD_ROUTE_FACTOR. Raw great-circle
+// distance systematically understates real road transport (roads detour),
+// so feeding it into A4 as-is biases every un-routed material low. The
+// 1.2 circuity factor is the typical Western/Central Europe road value,
+// and matches this project's one fully-routed calibration pair: Detmold→
+// Haarlem is 344 km routed vs 293 km straight-line = 1.17 measured.
+// haversineKm itself stays exported as the raw geometric primitive.
 import { findRouteDistance } from './routeDistanceStorage.js'
+
+export const ROAD_ROUTE_FACTOR = 1.2
 
 const EARTH_RADIUS_KM = 6371
 
@@ -28,7 +36,14 @@ export function haversineKm(a, b) {
   return 2 * EARTH_RADIUS_KM * Math.asin(Math.sqrt(h))
 }
 
-// Prefers a cached real route over the haversine estimate for one leg —
+// Road-route estimate for pairs with no fetched real route yet — see the
+// ROAD_ROUTE_FACTOR rationale in the header comment.
+export function roadEstimateKm(a, b) {
+  const straight = haversineKm(a, b)
+  return straight == null ? null : straight * ROAD_ROUTE_FACTOR
+}
+
+// Prefers a cached real route over the road estimate for one leg —
 // synchronous (reads localStorage only, never fetches), so callers of
 // findProvidersForMaterial (several of them synchronous analysis
 // functions in lcaAnalysis.js) don't need to become async just to benefit
@@ -36,7 +51,7 @@ export function haversineKm(a, b) {
 function bestDistanceKm(a, b) {
   const routed = findRouteDistance(a, b)
   if (routed) return { distanceKm: routed.distanceKm, source: 'routed' }
-  return { distanceKm: haversineKm(a, b), source: 'haversine' }
+  return { distanceKm: roadEstimateKm(a, b), source: 'road-estimate' }
 }
 
 /**

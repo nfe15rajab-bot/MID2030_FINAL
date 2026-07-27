@@ -3,7 +3,7 @@ import { MapContainer, TileLayer, Marker, Popup, CircleMarker } from 'react-leaf
 import L from 'leaflet'
 import referenceLocations from '../../database/reference-locations.json'
 import providers from '../../database/providers.json'
-import { haversineKm } from '../lib/geo.js'
+import { roadEstimateKm } from '../lib/geo.js'
 
 // Default Leaflet marker icons don't bundle correctly with Vite — same fix
 // as ProviderMap.jsx (harmless to repeat; L.Icon.Default is a shared
@@ -40,7 +40,8 @@ function bandColor(km) {
  * "does our supply chain actually cluster near Haarlem" is a question
  * about the whole provider list, not one material at a time (that's what
  * ProviderMap.jsx already answers, per-material, with routed lines to
- * Detmold). Distance here is straight-line to the SITE (not the routed
+ * Detmold). Distance here is a road-route estimate direct to the SITE
+ * (haversine × 1.2 circuity factor, see geo.js — not the routed
  * via-Detmold A4 figure) — a deliberately simpler "how far away is this
  * pin" read for the overview map, clearly labeled as such so it's never
  * confused with the A4 transport numbers computed elsewhere.
@@ -51,7 +52,7 @@ export default function GlobalProviderMap({ mapRef }) {
   const activeProviders = useMemo(() => {
     return providers
       .filter((p) => p.materialIds?.length > 0 && p.lat != null && p.lng != null)
-      .map((p) => ({ ...p, distanceToSiteKm: haversineKm({ lat: p.lat, lng: p.lng }, site) }))
+      .map((p) => ({ ...p, distanceToSiteKm: roadEstimateKm({ lat: p.lat, lng: p.lng }, site) }))
       .sort((a, b) => a.distanceToSiteKm - b.distanceToSiteKm)
   }, [site])
 
@@ -91,7 +92,7 @@ export default function GlobalProviderMap({ mapRef }) {
               <br />
               {p.address}
               <br />
-              {Math.round(p.distanceToSiteKm)} km straight-line to site
+              {Math.round(p.distanceToSiteKm)} km to site (road-route estimate)
               <br />
               Materials: {p.materialIds.join(', ')}
             </Popup>
@@ -104,7 +105,7 @@ export default function GlobalProviderMap({ mapRef }) {
           <strong>{activeProviders.length}</strong> active providers plotted · <strong>{within500}</strong>/
           {activeProviders.length} within 500&nbsp;km of the site (green) · <strong>{within1000}</strong>/
           {activeProviders.length} within 1000&nbsp;km (green+amber) · average{' '}
-          <strong>{avgKm != null ? Math.round(avgKm) : '—'}&nbsp;km</strong> straight-line.
+          <strong>{avgKm != null ? Math.round(avgKm) : '—'}&nbsp;km</strong> by road (estimated).
         </p>
         {farthest && (
           <p className="global-provider-note">
@@ -114,8 +115,9 @@ export default function GlobalProviderMap({ mapRef }) {
           </p>
         )}
         <p className="global-provider-note">
-          Distance shown here is straight-line to the site (for a quick visual read of concentration) — the
-          project's actual A4 transport figures use real routed driving distances via the Detmold hub; see
+          Distance shown here is a road-route estimate direct to the site (straight-line × 1.2 circuity
+          factor, for a quick visual read of concentration) — the project's actual A4 transport figures
+          route via the Detmold hub and use real OpenRouteService distances wherever fetched; see
           Materials and Providers / Deliverables → Assumptions for those.
         </p>
       </div>

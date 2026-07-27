@@ -157,7 +157,7 @@ function deriveDistanceKm(layer, material) {
   if (closestToSite) {
     const legLabel = closestToSite.distanceToDetmoldKmSource === 'routed'
       ? 'real road route via OpenRouteService'
-      : 'straight-line estimate — use "Get real route" in Materials and Providers tab for an accurate figure'
+      : 'road-route estimate (straight-line × 1.2 circuity factor) — use "Get real route" in Materials and Providers tab for the exact figure'
     return {
       distanceKm: closestToSite.distanceToDetmoldKm + detmoldToHaarlem.distanceKm,
       missing: null,

@@ -481,7 +481,8 @@ const A4ReportDraft = forwardRef(function A4ReportDraft({ summaries, references 
           As of this draft, {withData.length}/6 assemblies have saved data (see Section 4). U-value
           per DIN EN ISO 6946; A1-A3 = declared GWP unit value × quantity (from each layer's own
           functional unit); A4 per DIN EN ISO 14083, routed manufacturer → Detmold hub → Haarlem using
-          real driving distances wherever a route has been fetched, not straight-line estimates; B4
+          real driving distances wherever a route has been fetched and a road-route estimate
+          (straight-line × 1.2 circuity factor) otherwise — never a raw straight-line figure; B4
           from researched service life; C1/C3/C4/Module D from real EPD data where published, or a
           clearly flagged proxy/estimate where it isn't.
         </p>
@@ -879,7 +880,7 @@ const A4ReportDraft = forwardRef(function A4ReportDraft({ summaries, references 
         <h2>6. Global EPD — Provider Concentration</h2>
         <p>
           {providerStats.count} active providers plotted against the site: {providerStats.within500}/{providerStats.count} within
-          500 km straight-line, {providerStats.within1000}/{providerStats.count} within 1000 km, average{' '}
+          500 km by road (estimated), {providerStats.within1000}/{providerStats.count} within 1000 km, average{' '}
           {providerStats.avgKm != null ? Math.round(providerStats.avgKm) : '—'} km. See Deliverables → Excel &amp; EPD for the
           interactive map version of this same data.
         </p>
@@ -903,7 +904,7 @@ const A4ReportDraft = forwardRef(function A4ReportDraft({ summaries, references 
             </tbody>
           </table>
         </div>
-        <p className="a4-report-note">Distance here is straight-line, for a quick concentration read — real routed A4 transport distances are in Sections 4/5 and the Spreadsheet export.</p>
+        <p className="a4-report-note">Distance here is a road-route estimate direct to the site (straight-line × 1.2 circuity factor), for a quick concentration read — the A4 transport distances in Sections 4/5 and the Spreadsheet export route via the Detmold hub and use real OpenRouteService figures wherever fetched.</p>
       </section>
 
       <section className="a4-report-section">

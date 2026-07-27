@@ -96,7 +96,7 @@ export default function ProviderMap({ materialId }) {
                     <Tooltip sticky>
                       <strong>{p.name} → Detmold</strong>
                       <br />
-                      {p.distanceToDetmoldKm?.toFixed(1)} km straight-line estimate — click "Get real route" to trace the actual road.
+                      {p.distanceToDetmoldKm?.toFixed(1)} km road-route estimate — click "Get real route" to trace the actual road.
                     </Tooltip>
                   </Polyline>
                 )}
@@ -110,10 +110,10 @@ export default function ProviderMap({ materialId }) {
           <p className="empty-state">No providers registered for this material yet — add them to database/providers.json.</p>
         )}
         {closestToSite && (
-          <p>Closest to site: <strong>{closestToSite.name}</strong> ({closestToSite.distanceToSiteKm.toFixed(0)} km, {closestToSite.distanceToSiteKmSource === 'routed' ? 'real road route' : 'straight-line estimate'})</p>
+          <p>Closest to site: <strong>{closestToSite.name}</strong> ({closestToSite.distanceToSiteKm.toFixed(0)} km, {closestToSite.distanceToSiteKmSource === 'routed' ? 'real road route' : 'road-route estimate'})</p>
         )}
         {closestToDetmold && (
-          <p>Closest to Detmold: <strong>{closestToDetmold.name}</strong> ({closestToDetmold.distanceToDetmoldKm.toFixed(0)} km, {closestToDetmold.distanceToDetmoldKmSource === 'routed' ? 'real road route' : 'straight-line estimate'})</p>
+          <p>Closest to Detmold: <strong>{closestToDetmold.name}</strong> ({closestToDetmold.distanceToDetmoldKm.toFixed(0)} km, {closestToDetmold.distanceToDetmoldKmSource === 'routed' ? 'real road route' : 'road-route estimate'})</p>
         )}
         {closestToSite && estimateTransportCO2({
           distanceKm: closestToSite.distanceToSiteKm,
@@ -123,7 +123,7 @@ export default function ProviderMap({ materialId }) {
           <p className="note">Transport (A4) CO2: pending — awaiting the A4 emission-factor formula.</p>
         )}
         {closestToDetmold?.distanceToDetmoldKmSource !== 'routed' && (
-          <p className="note">Distance to Detmold is a straight-line estimate — use "Get real route" in the Materials and Providers tab for an accurate figure.</p>
+          <p className="note">Distance to Detmold is a road-route estimate (straight-line × 1.2 circuity factor) — use "Get real route" in the Materials and Providers tab for the exact figure.</p>
         )}
       </div>
     </div>

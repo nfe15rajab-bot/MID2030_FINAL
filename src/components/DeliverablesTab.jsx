@@ -6,18 +6,20 @@ import { getAllMaterials } from '../lib/materialsCatalog.js'
 import { loadAssemblyGeometry } from '../lib/assemblyGeometryStorage.js'
 import { gwpTotalForLayers } from '../lib/gwpPerM2.js'
 import { getEpdReferenceList } from '../lib/epdReferenceList.js'
-import { getFullCompletenessReport } from '../lib/lcaAnalysis.js'
+import { getFullCompletenessReport, calculateB6 } from '../lib/lcaAnalysis.js'
+import { useSharedData } from '../hooks/useSharedData.js'
 import { findProvidersForMaterial } from '../lib/geo.js'
 import { exportMultiPagePdf, exportMultiSectionPdf, isolateClonedElement } from '../lib/multiPagePdfExport.js'
 import { exportA4Docx } from '../lib/a4DocxExport.js'
 import { getSpreadsheetRows, getSpreadsheetMeta } from '../lib/spreadsheetData.js'
 import { exportSpreadsheetExcel, exportReferenceMatchingExcel } from '../lib/spreadsheetExcelExport.js'
 import { embedSectionDataInPdf } from '../lib/pdfSessionAttachment.js'
-import { exportAllAnnexVisualsAsZip } from '../lib/pngExport.js'
+import { exportAllAnnexVisualsAsZip, downloadElementAsPng } from '../lib/pngExport.js'
 import providers from '../../database/providers.json'
 import referenceLocations from '../../database/reference-locations.json'
 import A4ReportDraft from './A4ReportDraft.jsx'
 import A3PosterDraft from './A3PosterDraft.jsx'
+import AssemblyLcaReportSheet from './AssemblyLcaReportSheet.jsx'
 import EpdReferenceListPanel from './EpdReferenceListPanel.jsx'
 import GlobalProviderMap from './GlobalProviderMap.jsx'
 import SectionPreview from './SectionPreview.jsx'
@@ -199,6 +201,114 @@ function FicheDeliverablesSection() {
             </div>
           )
         })}
+      </div>
+    </div>
+  )
+}
+
+// One fiche-styled LCA report sheet per assembly (AssemblyLcaReportSheet)
+// — A1-A3 per layer + phase totals charts, site data, colored
+// conclusions — exportable one-by-one (PDF/PNG) or as a single combined
+// PDF. Same two-copy visible-preview/off-screen-export pattern as
+// A4ReportSection below, and for the same html2canvas-clips-inside-
+// overflow reason.
+function AssemblyLcaReportsSection() {
+  const summaries = getAssemblySummaries()
+  // Same staleness guard as LcaSummaryTab.jsx — B6 reads Operational
+  // Energy settings, which sync via this shared doc.
+  useSharedData('sharedData/operationalEnergy')
+  const b6Result = calculateB6()
+  const exportRefs = useRef({})
+  const [exportingKey, setExportingKey] = useState(null)
+
+  const withData = summaries.filter((s) => s.hasData)
+
+  async function handleExportPdf(key) {
+    const el = exportRefs.current[key]
+    if (!el) return
+    setExportingKey(key)
+    try {
+      await exportMultiPagePdf(el, `MID2030_LCA_Report_${key}.pdf`)
+    } finally {
+      setExportingKey(null)
+    }
+  }
+
+  async function handleExportPng(key) {
+    const el = exportRefs.current[key]
+    if (!el) return
+    setExportingKey(`${key}-png`)
+    try {
+      await downloadElementAsPng(el, `MID2030_LCA_Report_${key}.png`, { scale: 2 })
+    } finally {
+      setExportingKey(null)
+    }
+  }
+
+  async function handleExportAll() {
+    const els = withData.map((s) => exportRefs.current[s.key]).filter(Boolean)
+    if (els.length === 0) return
+    setExportingKey('all')
+    try {
+      await exportMultiSectionPdf(els, 'MID2030_LCA_Reports_All_Assemblies.pdf')
+    } finally {
+      setExportingKey(null)
+    }
+  }
+
+  return (
+    <div className="deliverable-block">
+      <div className="deliverable-row">
+        <span className="deliverable-name">LCA report per assembly</span>
+        <StatusBadge status={withData.length > 0 ? 'ready' : 'blocked'} />
+        {withData.length === 0 && <span className="deliverable-reason">no assemblies have saved layers yet</span>}
+        <button type="button" onClick={handleExportAll} disabled={exportingKey != null || withData.length === 0}>
+          {exportingKey === 'all' ? 'Generating…' : `Export all (${withData.length} sheets, one PDF)`}
+        </button>
+      </div>
+      <p className="deliverable-note">
+        One fiche-technique-styled sheet per assembly: A1-A3 per layer and lifecycle-phase charts, key figures
+        (A1-A3 / A4 / B4 / B6), site and transport data, per-layer table, and auto-derived colored conclusions —
+        all from the same computed data as the LCA Summary tab, nothing re-entered.
+      </p>
+
+      {summaries.map((s) => (
+        <div key={s.key} className="deliverable-block">
+          <div className="deliverable-row">
+            <span className="deliverable-name">{s.label}</span>
+            {s.hasData ? (
+              <>
+                <button type="button" onClick={() => handleExportPdf(s.key)} disabled={exportingKey != null}>
+                  {exportingKey === s.key ? 'Generating…' : 'Export PDF'}
+                </button>
+                <button type="button" onClick={() => handleExportPng(s.key)} disabled={exportingKey != null}>
+                  {exportingKey === `${s.key}-png` ? 'Exporting…' : 'Save PNG'}
+                </button>
+              </>
+            ) : (
+              <>
+                <StatusBadge status="blocked" />
+                <span className="deliverable-reason">no layers saved for {s.label}</span>
+              </>
+            )}
+          </div>
+          {s.hasData && (
+            <div className="deliverable-preview lca-report-preview">
+              <AssemblyLcaReportSheet summary={s} b6Result={b6Result} />
+            </div>
+          )}
+        </div>
+      ))}
+
+      <div style={{ position: 'fixed', left: 0, top: 0, width: '820px', zIndex: -9999, opacity: 0.001, pointerEvents: 'none', background: '#ffffff' }}>
+        {withData.map((s) => (
+          <AssemblyLcaReportSheet
+            key={s.key}
+            summary={s}
+            b6Result={b6Result}
+            ref={(el) => { exportRefs.current[s.key] = el }}
+          />
+        ))}
       </div>
     </div>
   )
@@ -518,7 +628,7 @@ function AssumptionsSection() {
   )
 }
 
-const SUB_TABS = ['Report', 'Material Audit', 'Assumptions', 'Excel & EPD', 'Sections', 'Fiche sheets']
+const SUB_TABS = ['Report', 'LCA Reports', 'Material Audit', 'Assumptions', 'Excel & EPD', 'Sections', 'Fiche sheets']
 
 // Deliverables — the final tab. One place to generate every output the
 // assignment requires, each reusing an existing pipeline rather than a
@@ -571,6 +681,8 @@ export default function DeliverablesTab() {
       <div className="split-pane-left split-pane-scroll">
 
       {subTab === 'Report' && <A4ReportSection />}
+
+      {subTab === 'LCA Reports' && <AssemblyLcaReportsSection />}
 
       {subTab === 'Material Audit' && <HinalMaterialAuditReport />}
 

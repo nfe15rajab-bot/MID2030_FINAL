@@ -122,8 +122,9 @@ function introductionSection(withData) {
       'Methodology: U-value per DIN EN ISO 6946 (U = 1 / (Rsi + Σ(thickness/λ) + Rse)); A1-A3 (product ' +
       'stage) = declared GWP unit value × quantity, derived from each layer\'s functional unit (m², m³, ' +
       'kg, or unit count for Door/Window/Skylight); A4 (transport) per DIN EN ISO 14083, routed ' +
-      'manufacturer → Detmold hub → Haarlem using real driving distances (OpenRouteService), not ' +
-      'straight-line estimates, wherever a route has been fetched; B4 (replacement) from each material\'s ' +
+      'manufacturer → Detmold hub → Haarlem using real driving distances (OpenRouteService) wherever a ' +
+      'route has been fetched and a road-route estimate (straight-line × 1.2 circuity factor) otherwise ' +
+      '— never a raw straight-line figure; B4 (replacement) from each material\'s ' +
       'researched service life; C1/C3/C4/Module D (end-of-life) from real EPD data where published, or a ' +
       'clearly flagged proxy/estimate where it isn\'t — see each assembly\'s own Assumptions table below ' +
       'for exactly which is which, material by material.'
@@ -510,8 +511,9 @@ function globalLcaSection() {
       'EPD/Ökobaudat figures (or an honestly-flagged low-confidence estimate where no real source exists — ' +
       'Sedum substrate, Daprona mesh, aluminium trim). Added end-of-life (C1/C3/C4/Module D) and service-life ' +
       'data for every wall and roof material, enabling the C&D figures above for the first time for those two ' +
-      'assemblies. Replaced straight-line ("as the crow flies") provider distances with real routed driving ' +
-      'distances for every wall and roof provider. None of this changed the physical design (materials/' +
+      'assemblies. Replaced raw straight-line ("as the crow flies") provider distances with real routed ' +
+      'driving distances (or a ×1.2-circuity road estimate where no route is fetched yet) for every wall ' +
+      'and roof provider. None of this changed the physical design (materials/' +
       'thicknesses match the team\'s own drawings exactly) — it replaced missing/placeholder data with real, ' +
       'sourced data so the sustainability picture above is actually measured, not assumed.'
     ),
@@ -527,18 +529,18 @@ function globalEpdSection() {
     heading('6. Global EPD — Provider Concentration'),
     body(
       `${stats.count} active providers (every provider actually linked to a used material) plotted against ` +
-      `the site: ${stats.within500}/${stats.count} within 500 km straight-line, ${stats.within1000}/${stats.count} ` +
+      `the site: ${stats.within500}/${stats.count} within 500 km by road (estimated), ${stats.within1000}/${stats.count} ` +
       `within 1000 km, average ${stats.avgKm != null ? Math.round(stats.avgKm) : '—'} km. The interactive map ` +
       '(Deliverables → Excel & EPD in the app) shows the same data visually; this table is its vector/text ' +
       'equivalent for the printed report.'
     ),
     table(
-      ['Provider', 'Address', 'Distance to site (km, straight-line)', 'Materials supplied'],
+      ['Provider', 'Address', 'Distance to site (km, road-route estimate)', 'Materials supplied'],
       stats.providers.map((p) => new TableRow({
         children: [cell(p.name, { width: 22 }), cell(p.address, { width: 32 }), cell(String(Math.round(p.distanceToSiteKm))), cell(p.materialIds.join(', '), { width: 30 })],
       }))
     ),
-    note('Distance here is straight-line, for a quick concentration read — real routed A4 transport distances (via the Detmold hub) are in Section 4/5 and the Spreadsheet export.'),
+    note('Distance here is a road-route estimate direct to the site (straight-line × 1.2 circuity factor), for a quick concentration read — the A4 transport distances in Section 4/5 and the Spreadsheet export route via the Detmold hub and use real OpenRouteService figures wherever fetched.'),
   ]
 }
 

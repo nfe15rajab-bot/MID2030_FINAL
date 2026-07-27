@@ -124,6 +124,16 @@ const FicheTechnique = forwardRef(function FicheTechnique(
                   ? `${detail.providerDistanceKm} km`
                   : '—'}
             </div>
+            {/* Never let a distance sit unlabeled — routed (real OpenRouteService
+                HGV route, see routeAutoFetch.js) vs road-route estimate
+                (straight-line × 1.2 circuity factor, see geo.js) are sourced
+                differently, same "never silently apply" rule as every other
+                figure on this sheet. */}
+            {closestToSite && (
+              <span className={`field-suggest-badge field-suggest-badge--${closestToSite.distanceToSiteKmSource === 'routed' ? 'high' : 'medium'}`}>
+                {closestToSite.distanceToSiteKmSource === 'routed' ? 'Real routed distance' : 'Road-route estimate'}
+              </span>
+            )}
           </div>
 
           <div className="fiche-field">

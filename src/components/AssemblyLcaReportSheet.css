@@ -1,0 +1,130 @@
+/* Per-assembly LCA report sheet — extends the fiche technique's visual
+   language (.fiche-sheet base class provides the Oswald font, white
+   ground, 3px frame, red .fiche-label). Only sheet-specific layout lives
+   here. Plain CSS, no external assets, so html2canvas captures it 1:1. */
+
+/* Double selector on purpose — .fiche-sheet's own `width: 100%` has equal
+   specificity and could win on stylesheet order alone; the export copies
+   need a deterministic 800px capture width regardless of import order. */
+.fiche-sheet.lca-report-sheet {
+  width: 800px;
+  max-width: 800px;
+  text-align: left;
+}
+
+.lca-sheet-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+.lca-sheet-header-meta {
+  font-size: 0.8rem;
+  color: #666;
+  white-space: nowrap;
+}
+
+.lca-sheet-meta-line {
+  font-size: 0.8rem;
+  color: #555;
+  margin-bottom: 14px;
+}
+
+.lca-sheet-top {
+  display: grid;
+  grid-template-columns: 1fr 300px;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.lca-sheet-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.lca-sheet-stat {
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 8px 10px;
+}
+.lca-sheet-stat-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #666;
+}
+.lca-sheet-stat-value {
+  font-size: 1.15rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+.lca-sheet-stat-sub {
+  font-size: 0.68rem;
+  color: #888;
+}
+
+.lca-sheet-chart {
+  margin-bottom: 6px;
+}
+.lca-sheet-chart-title {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #c0392b;
+  margin-bottom: 2px;
+}
+.lca-sheet-chart svg {
+  display: block;
+  height: auto;
+}
+.lca-sheet-chart-note {
+  font-size: 0.72rem;
+  color: #777;
+  margin: 0 0 16px;
+  line-height: 1.4;
+}
+
+.lca-sheet-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.76rem;
+  margin: 4px 0 16px;
+}
+.lca-sheet-table th {
+  text-align: left;
+  border-bottom: 1.5px solid #222;
+  padding: 3px 6px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.lca-sheet-table td {
+  border-bottom: 1px solid #e2ded6;
+  padding: 3px 6px;
+  white-space: nowrap;
+}
+.lca-sheet-table .lca-sheet-table-name {
+  white-space: normal;
+  max-width: 280px;
+}
+
+.lca-sheet-conclusions {
+  list-style: none;
+  margin: 4px 0 16px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.lca-sheet-conclusions li {
+  border-left: 4px solid #999;
+  padding: 3px 0 3px 10px;
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
+.lca-sheet-footer {
+  border-top: 1px solid #ccc;
+  padding-top: 8px;
+  font-size: 0.7rem;
+  color: #888;
+  line-height: 1.4;
+}

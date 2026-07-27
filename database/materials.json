@@ -341,6 +341,7 @@
     "thermalConductivityWmK": 0.13,
     "gwpA1A3PerFunctionalUnit": -760.5,
     "functionalUnit": "m3",
+    "linearCoverage": 0.3413,
     "okobaudatUUID": "426b030a-5e6d-4ed6-b117-e8b01bc3e890",
     "epdSource": "Ökobaudat \"KRONOPLY OSB / KRONOPOL OSB\" process dataset (brand-specific) — same figures as wall-kronoply-osb4-18",
     "eolC1": 0,
@@ -352,7 +353,7 @@
     "eolConfidenceLabel": "Brand-specific Ökobaudat dataset (KRONOPLY/KRONOPOL OSB)",
     "gwpConfidence": "high",
     "gwpConfidenceLabel": "Brand-specific Ökobaudat dataset, not a generic OSB category",
-    "notes": "Same OSB product as the wall/floor entries, used as the roof deck panel per the team's reference typical-section drawing (2026-07-11). Corrected from \"OSB/3\" to \"OSB/4\" to match that drawing's label (same correction/rationale as wall-kronoply-osb4-18) — id kept close to the original for continuity.",
+    "notes": "Same OSB product as the wall/floor entries, used as the roof deck panel per the team's reference typical-section drawing (2026-07-11). Corrected from \"OSB/3\" to \"OSB/4\" to match that drawing's label (same correction/rationale as wall-kronoply-osb4-18) — id kept close to the original for continuity. linearCoverage 0.3413 is MEASURED (2026-07-27): real total roof OSB volume across all 3 stack positions (outer deck, mid, inner) = 0.368558296 m3 (71 solid bodies, Rhino cumulative-volume takeoff) vs naive 20 m2 roof area x 18mm x 3 layers = 1.08 m3 a continuous slab would claim — 0.368558296/1.08 = 0.3413. Applied as one shared ratio across all three roof-kronoply-osb4-18 layer instances (same convention as the wall's 3-layer fix). Lower coverage than wall/floor OSB — a pitched roof deck is cut around ridge/eave/gable geometry and (per the roof drawing) 2 skylight openings, more waste than a flat rectangular wall or floor plate.",
     "gwpSourceUrl": "https://www.oekobaudat.de/OEKOBAU.DAT/resource/processes/426b030a-5e6d-4ed6-b117-e8b01bc3e890?version=00.02.000",
     "endOfLifeScenario": "Energy recovery (incineration)",
     "eolAssumptionBasis": "EN 15804 thermal treatment with energy recovery (R1 > 0.60) in municipal waste incineration plant"
@@ -2551,6 +2552,7 @@
     "thermalConductivityWmK": 0.13,
     "gwpA1A3PerFunctionalUnit": -805.37,
     "functionalUnit": "m3",
+    "linearCoverage": 0.8581,
     "okobaudatUUID": "766ea5bd-3f0f-4d48-a399-9c4a372524d8",
     "epdSource": "No SWISS KRONO-specific EPD found in Ökobaudat — reuses EGGER OSB boards' real, product-specific Ökobaudat EPD (611kg/m3, EU-27, ref. year 2024) as the closest comparable OSB/3 dataset; same generic-OSB/3-category basis this app already uses elsewhere",
     "eolC1": 0,
@@ -2565,6 +2567,7 @@
     "gwpConfidenceLabel": "Real product-specific Ökobaudat EPD for a comparable brand's OSB/3 board — SWISS KRONO's own EPD wasn't found in the current Ökobaudat release",
     "notes": "T&G deck, glued joints, taped airtight/VCL with pro clima TESCON VANA tape at joints (warm side) per the team's reference drawing (2026-07-25) — the taped OSB deck itself functions as this floor's air/vapour-control layer, so no separate membrane is modeled. Nailed to the 50x22mm fixing battens below (floor-osb-fixing-battens-22mm). SWISS KRONO Group's German OSB production runs through its Kronoply brand plant (Heiligengrabe) — same real provider already used for the wall/roof's Kronoply OSB/4, reused here rather than adding a second near-duplicate provider entry.",
     "gwpSourceUrl": "https://oekobaudat.de/OEKOBAU.DAT/resource/datastocks/cc64f7e1-14d8-4a57-b11b-2cf03d200c82/processes/766ea5bd-3f0f-4d48-a399-9c4a372524d8?format=html&lang=en",
+    "notes": "linearCoverage 0.8581 is MEASURED from the team's structural 3D model (2026-07-27): real floor OSB volume 0.324123826 m3 (68 solid bodies, Rhino cumulative-volume takeoff) vs the naive 17.17 m2 floor area x 22mm = 0.37774 m3 a continuous slab would claim — 0.324123826/0.37774 = 0.8581. Higher coverage than the wall's OSB (0.395) since the floor deck is one continuous panel cut mainly around the perimeter, not interrupted by window/door openings the way wall sheathing is.",
     "endOfLifeScenario": "Energy recovery (incineration)",
     "eolAssumptionBasis": "EN 15804 thermal treatment with energy recovery (R1 > 0.60) in municipal waste incineration plant"
   },
